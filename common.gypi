@@ -5,7 +5,7 @@
   'variables': {
     'target_arch%': 'x86',
     'library%': 'static_library',
-    'openssl_enable_asm%': 0, # only supported with the Visual Studio 2012 (VC11) toolchain.
+    'openssl_no_asm%': 0, # only supported with the Visual Studio 2012 (VC11) toolchain.
     'gcc_version%': 0,
     'is_clang%': 0,
   },

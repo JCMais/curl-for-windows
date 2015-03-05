@@ -3,6 +3,10 @@ out/
 *.sln
 *.vcxproj
 *.vcxproj.filters
+*.pyc
+
+# SVN folder
+.svn*
 
 # NuGet
 *.nupkg

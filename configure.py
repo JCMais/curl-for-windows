@@ -11,11 +11,11 @@ curl_root = os.path.join(os.path.abspath(root_dir), 'curl')
 
 sys.path.insert(0, os.path.join(root_dir, 'build', 'gyp', 'pylib'))
 
-try:
-    import gyp
-except ImportError:
-    print('You need to install gyp in build/gyp first. See the README.')
-    sys.exit(42)
+#try:
+import gyp
+#except ImportError:
+ #   print('You need to install gyp in build/gyp first. See the README.')
+  #  sys.exit(42)
 
 # parse our options
 parser = optparse.OptionParser()
@@ -24,7 +24,7 @@ parser.add_option("--toolchain",
                   action="store",
                   type="choice",
                   dest="toolchain",
-                  choices=['2008', '2010', '2012', '2013', 'auto'],
+                  choices=['2008', '2010', '2012', '2013', '2015', 'auto'],
                   help="msvs toolchain to build for. [default: %default]",
                   default='auto')
 
@@ -110,6 +110,8 @@ args = []
 configure_buildsystem(args)
 configure_defines(args)
 
-# build
 gyp_args = list(args)
-run_gyp(gyp_args)
+
+# build
+if __name__ == '__main__':
+  run_gyp(gyp_args)

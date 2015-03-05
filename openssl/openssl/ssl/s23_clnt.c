@@ -125,9 +125,11 @@ static const SSL_METHOD *ssl23_get_client_method(int ver)
 	if (ver == SSL2_VERSION)
 		return(SSLv2_client_method());
 #endif
+#ifndef OPENSSL_NO_SSL3
 	if (ver == SSL3_VERSION)
 		return(SSLv3_client_method());
-	else if (ver == TLS1_VERSION)
+#endif
+	if (ver == TLS1_VERSION)
 		return(TLSv1_client_method());
 	else if (ver == TLS1_1_VERSION)
 		return(TLSv1_1_client_method());
@@ -269,12 +271,35 @@ static int ssl23_no_ssl2_ciphers(SSL *s)
 	return 1;
 	}
 
+/* Fill a ClientRandom or ServerRandom field of length len. Returns <= 0
+ * on failure, 1 on success. */
+int ssl_fill_hello_random(SSL *s, int server, unsigned char *result, int len)
+	{
+	int send_time = 0;
+
+	if (len < 4)
+		return 0;
+	if (server)
+		send_time = (s->mode & SSL_MODE_SEND_SERVERHELLO_TIME) != 0;
+	else
+		send_time = (s->mode & SSL_MODE_SEND_CLIENTHELLO_TIME) != 0;
+	if (send_time)
+		{
+		unsigned long Time = (unsigned long)time(NULL);
+		unsigned char *p = result;
+		l2n(Time, p);
+		return RAND_pseudo_bytes(p, len-4);
+		}
+	else
+		return RAND_pseudo_bytes(result, len);
+	}
+
 static int ssl23_client_hello(SSL *s)
 	{
 	unsigned char *buf;
 	unsigned char *p,*d;
 	int i,ch_len;
-	unsigned long Time,l;
+	unsigned long l;
 	int ssl2_compat;
 	int version = 0, version_major, version_minor;
 #ifndef OPENSSL_NO_COMP
@@ -355,9 +380,7 @@ static int ssl23_client_hello(SSL *s)
 #endif
 
 		p=s->s3->client_random;
-		Time=(unsigned long)time(NULL);		/* Time */
-		l2n(Time,p);
-		if (RAND_pseudo_bytes(p,SSL3_RANDOM_SIZE-4) <= 0)
+		if (ssl_fill_hello_random(s, 0, p, SSL3_RANDOM_SIZE) <= 0)
 			return -1;
 
 		if (version == TLS1_2_VERSION)
@@ -677,6 +700,7 @@ static int ssl23_get_server_hello(SSL *s)
 		{
 		/* we have sslv3 or tls1 (server hello or alert) */
 
+#ifndef OPENSSL_NO_SSL3
 		if ((p[2] == SSL3_VERSION_MINOR) &&
 			!(s->options & SSL_OP_NO_SSLv3))
 			{
@@ -691,7 +715,9 @@ static int ssl23_get_server_hello(SSL *s)
 			s->version=SSL3_VERSION;
 			s->method=SSLv3_client_method();
 			}
-		else if ((p[2] == TLS1_VERSION_MINOR) &&
+		else
+#endif
+		if ((p[2] == TLS1_VERSION_MINOR) &&
 			!(s->options & SSL_OP_NO_TLSv1))
 			{
 			s->version=TLS1_VERSION;
@@ -714,6 +740,9 @@ static int ssl23_get_server_hello(SSL *s)
 			SSLerr(SSL_F_SSL23_GET_SERVER_HELLO,SSL_R_UNSUPPORTED_PROTOCOL);
 			goto err;
 			}
+
+		/* ensure that TLS_MAX_VERSION is up-to-date */
+		OPENSSL_assert(s->version <= TLS_MAX_VERSION);
 
 		if (p[0] == SSL3_RT_ALERT && p[5] != SSL3_AL_WARNING)
 			{
