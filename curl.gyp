@@ -10,13 +10,14 @@
       'target_name': 'libcurl',
       'type': '<(library)',
       'include_dirs': [
-        'build', # curl configuration
+        '.',
         'curl',
         'curl/lib',
         'curl/include',
       ],
       'defines': [
         'USE_SSLEAY',
+        'USE_OPENSSL',
         'USE_IPV6',
         'USE_LIBSSH2',
         'USE_ZLIB',

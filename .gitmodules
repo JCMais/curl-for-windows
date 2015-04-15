@@ -1,12 +1,16 @@
 [submodule "curl"]
 	path = curl
 	url = https://github.com/bagder/curl.git
+	branch = master
 [submodule "libssh2"]
 	path = libssh2
 	url = https://git.libssh2.org/libssh2.git
+	branch = master
 [submodule "build/gyp"]
 	path = build/gyp
 	url = https://github.com/svn2github/gyp.git
+	branch = master
 [submodule "zlib"]
 	path = zlib
 	url = https://github.com/madler/zlib.git
+	branch = master
