@@ -8,6 +8,7 @@ script_dir = os.path.dirname(__file__)
 root_dir = os.path.normpath(script_dir)
 output_dir = os.path.join(os.path.abspath(root_dir), 'out')
 curl_root = os.path.join(os.path.abspath(root_dir), 'curl')
+libssh2_root = os.path.join(os.path.abspath(root_dir), 'libssh2')
 
 sys.path.insert(0, os.path.join(root_dir, 'build', 'gyp', 'pylib'))
 
@@ -85,6 +86,10 @@ def configure_buildsystem(o):
     # copy tool_hugehelp.c
     shutil.copy(os.path.join(root_dir, "build\\tool_hugehelp.c"),
                 os.path.join(curl_root, "lib\\tool_hugehelp.c"))
+
+    # copy libssh2_config.h
+    shutil.copy(os.path.join(root_dir, "build\\libssh2_config.h"),
+                os.path.join(libssh2_root, "include\\libssh2_config.h"))
 
 
 def host_arch():

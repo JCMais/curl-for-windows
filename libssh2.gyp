@@ -8,11 +8,9 @@
       'target_name': 'libssh2',
       'type': '<(library)',
       'defines': [
-        'NETSNMP_ENABLE_IPV6'
+        'NETSNMP_ENABLE_IPV6', 'LIBSSH2_OPENSSL'
       ],
       'include_dirs': [
-        'libssh2/src',
-        'libssh2/win32',
         'libssh2/include',
       ],
       'sources': [
@@ -37,8 +35,8 @@
         'libssh2/src/sftp.c',
         'libssh2/src/transport.c',
         'libssh2/src/userauth.c',
-        'libssh2/src/version.c',
-        'libssh2/src/wincng.c'
+        'libssh2/src/version.c'
+        #'libssh2/src/wincng.c'
       ],
       'dependencies': [
         'openssl.gyp:openssl'
@@ -53,6 +51,9 @@
             'cflags': ['--std=c89'],
             'defines': ['_GNU_SOURCE']
         }],
+        ['OS=="win"', {
+            'defines': ['LIBSSH2_WIN32']
+        }]
       ],
     },
   ]
