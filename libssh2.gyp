@@ -38,6 +38,7 @@
         'libssh2/src/transport.c',
         'libssh2/src/userauth.c',
         'libssh2/src/version.c',
+        'libssh2/src/wincng.c'
       ],
       'dependencies': [
         'openssl.gyp:openssl'
