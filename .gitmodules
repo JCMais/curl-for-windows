@@ -4,7 +4,7 @@
 	branch = master
 [submodule "libssh2"]
 	path = libssh2
-	url = https://git.libssh2.org/libssh2.git
+	url = https://github.com/libssh2/libssh2.git
 	branch = master
 [submodule "build/gyp"]
 	path = build/gyp
