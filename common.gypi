@@ -4,12 +4,7 @@
 {
   'variables': {
     'target_arch%': 'x86',
-    'library%': 'static_library',
-    'gcc_version%': 0,
-    'openssl_no_asm%': 0, # only supported with the Visual Studio 2012 (VC11) toolchain.
-    'openssl_fips': '',
-    'node_byteorder': 'little', # as we are getting openssl from the node sources, we need to set this variable, and as we are targetting windows only, we can assume little-endian arch.
-    'is_clang%': 0,
+    'library%'    : 'static_library'
   },
   'target_defaults': {
     'default_configuration': 'Release',
@@ -32,7 +27,7 @@
         'msvs_settings': {
           'VCCLCompilerTool': {
             'RuntimeLibrary': 1, #static debug 
-			       'Optimization': 0, #/Od, no optimization
+			      'Optimization': 0, #/Od, no optimization
             'MinimalRebuild': 'false',
             'OmitFramePointers': 'false',
             'BasicRuntimeChecks': 3, # /RTC1
