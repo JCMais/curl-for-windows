@@ -28,9 +28,9 @@ parser.add_option( '--target-arch',
                 action='store',
                 dest='target_arch',
                 type='choice',
-                choices=['x86', 'x64'],
+                choices=['ia32', 'x64'],
                 help='CPU architecture to build for. [default: %default]',
-                default='x86')
+                default='ia32')
 
 ( options, args ) = parser.parse_args()
 
