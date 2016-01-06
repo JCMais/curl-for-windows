@@ -7,6 +7,7 @@
     'library%'    : 'static_library'
   },
   'target_defaults': {
+    'msvs_cygwin_shell': 0, # disable gyp trying to use cygwin shell, more info on file msvs.py#365 from gyp
     'default_configuration': 'Release',
     'configurations': {
       'Debug': {

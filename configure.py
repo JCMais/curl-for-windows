@@ -6,9 +6,9 @@ import platform
 
 script_dir   = os.path.dirname( __file__ )
 root_dir     = os.path.normpath( script_dir )
-output_dir   = os.path.join(os.path.abspath( root_dir ), 'out' )
-curl_root    = os.path.join(os.path.abspath( root_dir ), 'curl' )
-libssh2_root = os.path.join(os.path.abspath( root_dir ), 'libssh2' )
+output_dir   = os.path.join( os.path.abspath( root_dir ), 'out' )
+curl_root    = os.path.join( os.path.abspath( root_dir ), 'curl' )
+libssh2_root = os.path.join( os.path.abspath( root_dir ), 'libssh2' )
 
 sys.path.insert( 0, os.path.join( root_dir, 'build', 'gyp', 'pylib' ) )
 import gyp
@@ -50,15 +50,15 @@ def configure_defines(o):
     o.extend(['-D', 'library=static_library'])
 
 
-def configure_buildsystem(o):
+def configure_buildsystem( o ):
     """
     Configures buildsystem
     """
     # gyp target
-    args.append( os.path.join( root_dir, 'curl.gyp' ) )
+    o.append( os.path.join( root_dir, 'curl.gyp' ) )
 
     # includes
-    args.extend( ['-I', os.path.join( root_dir, 'common.gypi' )] )
+    o.extend( ['-I', os.path.join( root_dir, 'common.gypi' )] )
 
     # msvs
     o.extend( ['-f', 'msvs'] )
@@ -69,9 +69,10 @@ def configure_buildsystem(o):
 
     # gyp
     o.append( '--depth=' + root_dir )
-    o.append( '-Goutput_dir=' + os.path.join( output_dir, options.target_arch ) )
+    o.extend( ['-G', 'output_dir=' + os.path.join( output_dir, options.target_arch )] )
     o.append( '--generator-output=' + os.path.join( output_dir, options.target_arch ) )
     # o.append( '--suffix=.' + options.target_arch )
+    #o.append( '--help' )
 
     # copy curlbuild.h
     shutil.copy( os.path.join( root_dir, "build\\curlbuild.h" ),

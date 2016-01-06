@@ -9,8 +9,8 @@
     'openssl_no_asm%': 0,
     'llvm_version%': 0,
     'gas_version%': 0,
-    'openssl_fips%': '',
-    'node_byteorder%' : 'little' # as we are getting openssl from the node sources, we need to set this variable, and as we are targetting windows only, we can assume little-endian arch.
+    'openssl_fips%': '', #added
+    'node_byteorder%' : 'little' # as we are getting openssl from the node sources, we need to set this variable, and as we are targetting windows only, we can assume little-endian arch. #added
   },
   'targets': [
     {
