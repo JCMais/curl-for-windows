@@ -30,9 +30,9 @@
         'BUILDING_LIBCURL',
       ],
       'dependencies': [
-        'openssl.gyp:openssl',
+        'openssl/openssl.gyp:openssl',
+        'libssh2.gyp:libssh2',
         'zlib.gyp:zlib',
-        'libssh2.gyp:libssh2'
       ],
       'direct_dependent_settings': {
         'conditions': [
@@ -51,17 +51,18 @@
       },
       'sources':[
         'build/tool_hugehelp.c',
-    		'curl/lib/vtls/axtls.c',
-    		'curl/lib/vtls/darwinssl.c',
-    		'curl/lib/vtls/schannel.c',
-    		'curl/lib/vtls/cyassl.c',
-    		'curl/lib/vtls/gskit.c',
-    		'curl/lib/vtls/gtls.c',
-    		'curl/lib/vtls/nss.c',
-    		'curl/lib/vtls/openssl.c',
-    		'curl/lib/vtls/polarssl.c',
-    		'curl/lib/vtls/polarssl_threadlock.c',
-    		'curl/lib/vtls/vtls.c',
+		    'curl/lib/vtls/axtls.c',
+		    'curl/lib/vtls/darwinssl.c',
+		    'curl/lib/vtls/schannel.c',
+		    'curl/lib/vtls/cyassl.c',
+		    'curl/lib/vtls/gskit.c',
+		    'curl/lib/vtls/gtls.c',
+		    'curl/lib/vtls/nss.c',
+		    'curl/lib/vtls/openssl.c',
+		    'curl/lib/vtls/polarssl.c',
+		    'curl/lib/vtls/polarssl_threadlock.c',
+        'curl/lib/vtls/vtls.c',
+        'curl/lib/vtls/mbedtls.c',
         'curl/lib/dotdot.c',
         'curl/lib/file.c',
         'curl/lib/timeval.c',
@@ -161,7 +162,6 @@
         'curl/lib/curl_multibyte.c',
         'curl/lib/curl_endian.c',
         'curl/lib/hostcheck.c',
-        'curl/lib/bundles.c',
         'curl/lib/conncache.c',
         'curl/lib/pipeline.c',
       ],
@@ -198,16 +198,14 @@
 	  'target_name': 'curl',
 	  'type': 'executable',
 	  'dependencies': [
-		'libcurl',
+        'libcurl',
 	  ],
 	  'include_dirs': [
-        '.',
-        'curl/lib',		
-        'curl/src',
+      '.',
+      'curl/lib',		
+      'curl/src',
 	  ],
-	  'defines': [
-       
-	  ],
+	  'defines': [],
 	  'sources': [
       'curl/src/tool_binmode.c',
       'curl/src/tool_bname.c',
@@ -246,6 +244,7 @@
       'curl/src/tool_writeenv.c',
       'curl/src/tool_writeout.c',
       'curl/src/tool_xattr.c',
+      'curl/src/slist_wc.c'
 	  ],
 	},
     {

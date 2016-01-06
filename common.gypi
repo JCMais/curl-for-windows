@@ -5,8 +5,10 @@
   'variables': {
     'target_arch%': 'x86',
     'library%': 'static_library',
-    'openssl_no_asm%': 0, # only supported with the Visual Studio 2012 (VC11) toolchain.
     'gcc_version%': 0,
+    'openssl_no_asm%': 0, # only supported with the Visual Studio 2012 (VC11) toolchain.
+    'openssl_fips': '',
+    'node_byteorder': 'little', # as we are getting openssl from the node sources, we need to set this variable, and as we are targetting windows only, we can assume little-endian arch.
     'is_clang%': 0,
   },
   'target_defaults': {
@@ -30,24 +32,24 @@
         'msvs_settings': {
           'VCCLCompilerTool': {
             'RuntimeLibrary': 1, #static debug 
-			'Optimization': 0, #/Od, no optimization
+			       'Optimization': 0, #/Od, no optimization
             'MinimalRebuild': 'false',
             'OmitFramePointers': 'false',
             'BasicRuntimeChecks': 3, # /RTC1
           },
           'VCLinkerTool': {
             'LinkIncremental': 2, #enable incremental linking
-			'conditions': 
-	        [
-	          ['target_arch=="x64"', {
-	            'TargetMachine': 17 # /MACHINE:X64
-	          }],
-	        ],
+            'conditions': 
+  	        [
+  	          ['target_arch=="x64"', {
+  	            'TargetMachine': 17 # /MACHINE:X64
+  	          }],
+  	        ],
           },
         },
       },
       'Release': {
-		'conditions': [
+	      'conditions': [
           ['target_arch=="x64"', {#
               'msvs_configuration_platform': 'x64',
             }
@@ -57,10 +59,10 @@
           'VCCLCompilerTool': {
             'RuntimeLibrary': 0, #static release 
             'Optimization': 3, #/Ox, full optimization
-			'FavorSizeOrSpeed': 1, # /Ot, favour speed over size 
-			'InlineFunctionExpansion': 2, #/Ob2, inline anything eligible
-			'WholeProgramOptimization': 'true', # /GL, whole program optimization, needed for LTCG 
-			'OmitFramePointers': 'true',
+      			'FavorSizeOrSpeed': 1, # /Ot, favour speed over size 
+      			'InlineFunctionExpansion': 2, #/Ob2, inline anything eligible
+      			'WholeProgramOptimization': 'true', # /GL, whole program optimization, needed for LTCG 
+      			'OmitFramePointers': 'true',
             'EnableFunctionLevelLinking': 'true',
             'EnableIntrinsicFunctions': 'true',
             'RuntimeTypeInfo': 'false',
@@ -77,22 +79,22 @@
           'VCLinkerTool': {
             'LinkTimeCodeGeneration': 1, #link - time code generation 
             'OptimizeReferences': 2, #/OPT:REF
-			'EnableCOMDATFolding': 2, # /OPT: ICF 
-			'LinkIncremental': 1, #disable incremental linking
-			'conditions': 
-	        [
-	          ['target_arch=="x64"', {
-	            'TargetMachine': 17 # /MACHINE:X64
-	          }],
-	        ],
+      			'EnableCOMDATFolding': 2, # /OPT: ICF 
+      			'LinkIncremental': 1, #disable incremental linking
+      			'conditions': 
+  	        [
+  	          ['target_arch=="x64"', {
+  	            'TargetMachine': 17 # /MACHINE:X64
+  	          }],
+  	        ],
           },
         },
       },
     },
   'msvs_settings' : {
-	'VCLinkerTool' : {
-		'GenerateDebugInformation': 'true',
-	}
+  	'VCLinkerTool' : {
+  		'GenerateDebugInformation': 'true',
+  	}
   }
   },
 }

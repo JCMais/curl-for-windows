@@ -970,8 +970,9 @@ EC_GROUP *d2i_ECPKParameters(EC_GROUP **a, const unsigned char **in, long len)
 {
     EC_GROUP *group = NULL;
     ECPKPARAMETERS *params = NULL;
+    const unsigned char *p = *in;
 
-    if ((params = d2i_ECPKPARAMETERS(NULL, in, len)) == NULL) {
+    if ((params = d2i_ECPKPARAMETERS(NULL, &p, len)) == NULL) {
         ECerr(EC_F_D2I_ECPKPARAMETERS, EC_R_D2I_ECPKPARAMETERS_FAILURE);
         ECPKPARAMETERS_free(params);
         return NULL;
@@ -989,6 +990,7 @@ EC_GROUP *d2i_ECPKParameters(EC_GROUP **a, const unsigned char **in, long len)
         *a = group;
 
     ECPKPARAMETERS_free(params);
+    *in = p;
     return (group);
 }
 
@@ -1016,8 +1018,9 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const unsigned char **in, long len)
     int ok = 0;
     EC_KEY *ret = NULL;
     EC_PRIVATEKEY *priv_key = NULL;
+    const unsigned char *p = *in;
 
-    if ((priv_key = d2i_EC_PRIVATEKEY(NULL, in, len)) == NULL) {
+    if ((priv_key = d2i_EC_PRIVATEKEY(NULL, &p, len)) == NULL) {
         ECerr(EC_F_D2I_ECPRIVATEKEY, ERR_R_EC_LIB);
         return NULL;
     }
@@ -1096,6 +1099,7 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const unsigned char **in, long len)
 
     if (a)
         *a = ret;
+    *in = p;
     ok = 1;
  err:
     if (!ok) {
@@ -1114,7 +1118,7 @@ int i2d_ECPrivateKey(EC_KEY *a, unsigned char **out)
 {
     int ret = 0, ok = 0;
     unsigned char *buffer = NULL;
-    size_t buf_len = 0, tmp_len;
+    size_t buf_len = 0, tmp_len, bn_len;
     EC_PRIVATEKEY *priv_key = NULL;
 
     if (a == NULL || a->group == NULL || a->priv_key == NULL ||
@@ -1130,16 +1134,30 @@ int i2d_ECPrivateKey(EC_KEY *a, unsigned char **out)
 
     priv_key->version = a->version;
 
-    buf_len = (size_t)BN_num_bytes(a->priv_key);
+    bn_len = (size_t)BN_num_bytes(a->priv_key);
+
+    /* Octetstring may need leading zeros if BN is to short */
+
+    buf_len = (EC_GROUP_get_degree(a->group) + 7) / 8;
+
+    if (bn_len > buf_len) {
+        ECerr(EC_F_I2D_ECPRIVATEKEY, EC_R_BUFFER_TOO_SMALL);
+        goto err;
+    }
+
     buffer = OPENSSL_malloc(buf_len);
     if (buffer == NULL) {
         ECerr(EC_F_I2D_ECPRIVATEKEY, ERR_R_MALLOC_FAILURE);
         goto err;
     }
 
-    if (!BN_bn2bin(a->priv_key, buffer)) {
+    if (!BN_bn2bin(a->priv_key, buffer + buf_len - bn_len)) {
         ECerr(EC_F_I2D_ECPRIVATEKEY, ERR_R_BN_LIB);
         goto err;
+    }
+
+    if (buf_len - bn_len > 0) {
+        memset(buffer, 0, buf_len - bn_len);
     }
 
     if (!M_ASN1_OCTET_STRING_set(priv_key->privateKey, buffer, buf_len)) {

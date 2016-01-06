@@ -1,1 +1,1 @@
-link dummytest.c
+openssl-1.0.2e/dummytest.c

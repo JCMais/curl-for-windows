@@ -1,1 +1,1 @@
-link ../crypto/ripemd/rmdtest.c
+openssl-1.0.2e/../crypto/ripemd/rmdtest.c

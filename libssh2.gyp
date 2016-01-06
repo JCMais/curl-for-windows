@@ -39,7 +39,7 @@
         #'libssh2/src/wincng.c'
       ],
       'dependencies': [
-        'openssl.gyp:openssl'
+        'openssl/openssl.gyp:openssl'
       ],
       'direct_dependent_settings': {
         'include_dirs': [

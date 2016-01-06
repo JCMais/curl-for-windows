@@ -1,1 +1,1 @@
-link ../crypto/cast/casttest.c
+openssl-1.0.2e/../crypto/cast/casttest.c
