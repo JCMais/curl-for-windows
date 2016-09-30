@@ -8,8 +8,9 @@
     'gcc_version': 0,
     'openssl_no_asm%': 0,
     'llvm_version%': 0,
+    'xcode_version%': 0,
     'gas_version%': 0,
-    'openssl_fips%': '', #added
+    'openssl_fips%': '',
     'node_byteorder%' : 'little' # as we are getting openssl from the node sources, we need to set this variable, and as we are targetting windows only, we can assume little-endian arch. #added
   },
   'targets': [
@@ -121,10 +122,17 @@
         }], # end of conditions of openssl_no_asm
         ['OS=="win"', {
           'defines' : ['<@(openssl_defines_all_win)'],
-          'includes': ['masm_compile.gypi',],
         }, {
           'defines' : ['<@(openssl_defines_all_non_win)']
-        }]
+        }],
+        ['target_arch=="ia32" and OS=="win"', {
+          'msvs_settings': {
+            'MASM': {
+              # Use /safeseh, see commit: 01fa5ee
+              'UseSafeExceptionHandlers': 'true',
+            },
+          },
+        }],
       ],
       'include_dirs': ['<@(openssl_include_dirs)'],
       'direct_dependent_settings': {

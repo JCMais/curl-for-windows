@@ -1,5 +1,5 @@
 # 2013 (C) Peter Rekdal Sunde
-
+# 2016 (C) Jonathan Cardoso Machado
 {
   'includes': [
     'common.gypi',
@@ -51,6 +51,18 @@
       },
       'sources':[
         'build/tool_hugehelp.c',
+        'curl/lib/vauth/cleartext.c',
+        'curl/lib/vauth/cram.c',
+        'curl/lib/vauth/digest.c',
+        'curl/lib/vauth/digest_sspi.c',
+        'curl/lib/vauth/krb5_gssapi.c',
+        'curl/lib/vauth/krb5_sspi.c',
+        'curl/lib/vauth/ntlm.c',
+        'curl/lib/vauth/ntlm_sspi.c',
+        'curl/lib/vauth/oauth2.c',
+        'curl/lib/vauth/spnego_gssapi.c',
+        'curl/lib/vauth/spnego_sspi.c',
+        'curl/lib/vauth/vauth.c',
 		    'curl/lib/vtls/axtls.c',
 		    'curl/lib/vtls/darwinssl.c',
 		    'curl/lib/vtls/schannel.c',
@@ -96,6 +108,7 @@
         'curl/lib/wildcard.c',
         'curl/lib/memdebug.c',
         'curl/lib/http_chunks.c',
+        'curl/lib/http_ntlm.c',
         'curl/lib/strtok.c',
         'curl/lib/connect.c',
         'curl/lib/llist.c',
@@ -145,25 +158,21 @@
         'curl/lib/curl_gethostname.c',
         'curl/lib/gopher.c',
         'curl/lib/idn_win32.c',
-        'curl/lib/http_negotiate_sspi.c',
         'curl/lib/http_proxy.c',
         'curl/lib/non-ascii.c',
         'curl/lib/asyn-ares.c',
         'curl/lib/asyn-thread.c',
         'curl/lib/curl_des.c',
         'curl/lib/curl_gssapi.c',
-        'curl/lib/curl_ntlm.c',
         'curl/lib/curl_ntlm_wb.c',
         'curl/lib/curl_ntlm_core.c',
-        'curl/lib/curl_ntlm_msgs.c',
         'curl/lib/curl_sasl.c',
-        'curl/lib/curl_sasl_gssapi.c',
-        'curl/lib/curl_sasl_sspi.c',
         'curl/lib/curl_multibyte.c',
         'curl/lib/curl_endian.c',
         'curl/lib/hostcheck.c',
         'curl/lib/conncache.c',
         'curl/lib/pipeline.c',
+        'curl/lib/system_win32.c'
       ],
       'conditions':[
         ['OS=="win"',
