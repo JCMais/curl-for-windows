@@ -8,7 +8,7 @@
 	branch = master
 [submodule "build/gyp"]
 	path = build/gyp
-	url = https://github.com/svn2github/gyp.git
+	url = https://chromium.googlesource.com/external/gyp
 	branch = master
 [submodule "zlib"]
 	path = zlib
