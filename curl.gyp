@@ -99,7 +99,6 @@
         'curl/lib/netrc.c',
         'curl/lib/getinfo.c',
         'curl/lib/transfer.c',
-        'curl/lib/strequal.c',
         'curl/lib/easy.c',
         'curl/lib/security.c',
         'curl/lib/curl_fnmatch.c',
@@ -136,7 +135,7 @@
         'curl/lib/strdup.c',
         'curl/lib/socks.c',
         'curl/lib/ssh.c',
-        'curl/lib/rawstr.c',
+        'curl/lib/strcase.c',
         'curl/lib/curl_addrinfo.c',
         'curl/lib/socks_gssapi.c',
         'curl/lib/socks_sspi.c',
@@ -211,7 +210,7 @@
 	  ],
 	  'include_dirs': [
       '.',
-      'curl/lib',		
+      'curl/lib',
       'curl/src',
 	  ],
 	  'defines': [],
@@ -264,7 +263,7 @@
       ],
       'sources' : [
         'example.c'
-      ],	  
+      ],
     },
     #{
       # todo: tests
