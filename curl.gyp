@@ -171,7 +171,8 @@
         'curl/lib/hostcheck.c',
         'curl/lib/conncache.c',
         'curl/lib/pipeline.c',
-        'curl/lib/system_win32.c'
+        'curl/lib/system_win32.c',
+        'curl/lib/rand.c',
       ],
       'conditions':[
         ['OS=="win"',
@@ -249,7 +250,6 @@
       'curl/src/tool_urlglob.c',
       'curl/src/tool_util.c',
       'curl/src/tool_vms.c',
-      'curl/src/tool_writeenv.c',
       'curl/src/tool_writeout.c',
       'curl/src/tool_xattr.c',
       'curl/src/slist_wc.c'

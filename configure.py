@@ -20,7 +20,7 @@ parser.add_option( '--toolchain',
                 action='store',
                 type='choice',
                 dest='toolchain',
-                choices=['2008', '2010', '2012', '2013', '2015', 'auto'],
+                choices=['2008', '2010', '2012', '2013', '2015', '2017', 'auto'],
                 help='msvs toolchain to build for. [default: %default]',
                 default='auto')
 
@@ -73,10 +73,6 @@ def configure_buildsystem( o ):
     o.append( '--generator-output=' + os.path.join( output_dir, options.target_arch ) )
     # o.append( '--suffix=.' + options.target_arch )
     #o.append( '--help' )
-
-    # copy curlbuild.h
-    shutil.copy( os.path.join( root_dir, "build\\curlbuild.h" ),
-                os.path.join( curl_root, "include\\curl\\curlbuild.h" ) )
 
     # copy tool_hugehelp.c
     shutil.copy( os.path.join( root_dir, "build\\tool_hugehelp.c" ),
