@@ -173,6 +173,9 @@
         'curl/lib/pipeline.c',
         'curl/lib/system_win32.c',
         'curl/lib/rand.c',
+        'curl/lib/mime.c',
+        'curl/lib/sha256.c',
+        'curl/lib/setopt.c',
       ],
       'conditions':[
         ['OS=="win"',
@@ -238,7 +241,6 @@
       'curl/src/tool_libinfo.c',
       'curl/src/tool_main.c',
       'curl/src/tool_metalink.c',
-      'curl/src/tool_mfiles.c',
       'curl/src/tool_msgs.c',
       'curl/src/tool_operate.c',
       'curl/src/tool_operhlp.c',

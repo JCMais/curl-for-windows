@@ -97,3 +97,14 @@ in the official curl repository.
   - ws2_32.lib
   
 By now you should have sweet, statically linked, CURL! ;)
+
+
+# Contributing
+
+## Upgrading libcurl
+
+1. Download the zip archive from the latest tag from the curl official repo https://github.com/curl/curl
+2. Compare the contents of the extracted sources with the ones at the curl folder on this repo. (I recommend bcompare for that or any other tool that can compare folder contents)
+3. Make necessary changes to the curl.gyp file.
+   > For example, if a lib source file was removed/added on the new version, it must be 
+   > removed/added on the curl.gyp file at the specific target
