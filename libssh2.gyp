@@ -35,7 +35,9 @@
         'libssh2/src/sftp.c',
         'libssh2/src/transport.c',
         'libssh2/src/userauth.c',
-        'libssh2/src/version.c'
+        'libssh2/src/version.c',
+        'libssh2/src/mbedtls.c',
+        'libssh2/src/os400qc3.c'
         #'libssh2/src/wincng.c'
       ],
       'dependencies': [
