@@ -108,3 +108,12 @@ By now you should have sweet, statically linked, CURL! ;)
 3. Make necessary changes to the curl.gyp file.
    > For example, if a lib source file was removed/added on the new version, it must be 
    > removed/added on the curl.gyp file at the specific target
+
+## Upgrading OpenSSL
+
+OpenSSL is based on Node.js version: https://github.com/nodejs/node/tree/v9.11.2/deps/openssl/openssl
+
+The only thing that (as of now) that needs to be changed, is set `node_byteorder` to `little` and set `openssl_fips` to `""`, in the `openssl.gyp` file.
+
+Starting with Node.js 10, OpenSSL was upgraded to v1.1, and so this way of upgrading OpenSSL does not work anymore, contributions are welcome to migrate
+this repo to v1.1.
