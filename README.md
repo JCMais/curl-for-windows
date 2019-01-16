@@ -24,29 +24,21 @@ a working, statically linked version of the latest libcurl.
 
 Happy linking ;)
 
-# Download prebuilt version of curl
-
-Download available for your convenience over at [SourceForge](https://sourceforge.net/projects/curlforwindows/files/?source=navbar) which
-also includes the static libraries.
-
-# Obtaining a free copy of visual studio
-
-If you do not have a visual studio license you can
-download [Visual Studio 2013 Express edition](http://go.microsoft.com/?linkid=9816758) for free.
-
 # Curl dependencies
 
-- [Openssl](https://github.com/openssl/openssl): 1.0.0.1e
-- [Libssh2](http://libssh2.org): 2.1.4.3
-- [Zlib](http://zlib.net): 1.2.8
+- [Openssl](https://github.com/openssl/openssl)
+- [Libssh2](http://libssh2.org)
+- [Zlib](http://zlib.net)
 
 # Prerequisites
 
 * [Python 2.7](python.org)
+* [Visual Studio](https://visualstudio.microsoft.com/pt-br/vs/community/)
+* [NASM](https://www.nasm.us/) (Required to use ASM version of openssl)
 
 # Obtaining prerequisites 
 	
-    $ git clone https://github.com/peters/curl-for-windows.git
+    $ git clone https://github.com/JCMais/curl-for-windows.git
     $ git submodule update --init --recursive
       
 # Configuration options
@@ -98,7 +90,6 @@ in the official curl repository.
   
 By now you should have sweet, statically linked, CURL! ;)
 
-
 # Contributing
 
 ## Upgrading libcurl
@@ -111,9 +102,6 @@ By now you should have sweet, statically linked, CURL! ;)
 
 ## Upgrading OpenSSL
 
-OpenSSL is based on Node.js version: https://github.com/nodejs/node/tree/v9.11.2/deps/openssl/openssl
+OpenSSL is based on Node.js version: https://github.com/nodejs/node/blob/v10.15.0/deps/openssl
 
-The only thing that (as of now) that needs to be changed, is set `node_byteorder` to `little` and set `openssl_fips` to `""`, in the `openssl.gyp` file.
-
-Starting with Node.js 10, OpenSSL was upgraded to v1.1, and so this way of upgrading OpenSSL does not work anymore, contributions are welcome to migrate
-this repo to v1.1.
+At the time of writing this, the upgrade process was as easy as just copying the folder over.
