@@ -23,11 +23,13 @@
             '_WINDOWS',
             'HAVE_CONFIG_H',
           ],
-          'msvs_settings': {
-            'VCCLCompilerTool': {
-              'CompileAs': '1'
-            },
-          },
+          # 'msvs_settings': {
+          #   'VCCLCompilerTool': {
+          #     # 1 means compile as C code, this is not compatible with the win_delay_load_library used on node addons
+          #     # https://docs.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.vcprojectengine.compileasoptions?view=visualstudiosdk-2017
+          #     'CompileAs': '1'
+          #   },
+          # },
         }],
         ['debug_nghttp2 == 1', {
           'defines': [ 'DEBUGBUILD=1' ]
