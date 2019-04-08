@@ -28,6 +28,7 @@ Happy linking ;)
 
 - [Openssl](https://github.com/openssl/openssl)
 - [Libssh2](http://libssh2.org)
+- [nghttp2](https://nghttp2.org/)
 - [Zlib](http://zlib.net)
 
 # Prerequisites
