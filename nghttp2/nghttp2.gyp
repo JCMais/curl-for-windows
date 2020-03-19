@@ -15,6 +15,7 @@
       'defines': [
         'BUILDING_NGHTTP2',
         'NGHTTP2_STATICLIB',
+        'HAVE_CONFIG_H',
       ],
       'conditions': [
         ['OS=="win"', {
