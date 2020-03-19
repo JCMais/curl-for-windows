@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2018 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1999-2019 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -13,6 +13,7 @@
 #include <openssl/x509v3.h>
 #include <openssl/x509_vfy.h>
 #include "internal/x509_int.h"
+#include "internal/tsan_assist.h"
 
 static void x509v3_cache_extensions(X509 *x);
 
@@ -133,13 +134,14 @@ int X509_PURPOSE_get_by_id(int purpose)
 {
     X509_PURPOSE tmp;
     int idx;
+
     if ((purpose >= X509_PURPOSE_MIN) && (purpose <= X509_PURPOSE_MAX))
         return purpose - X509_PURPOSE_MIN;
-    tmp.purpose = purpose;
-    if (!xptable)
+    if (xptable == NULL)
         return -1;
+    tmp.purpose = purpose;
     idx = sk_X509_PURPOSE_find(xptable, &tmp);
-    if (idx == -1)
+    if (idx < 0)
         return -1;
     return idx + X509_PURPOSE_COUNT;
 }
@@ -352,9 +354,11 @@ static void x509v3_cache_extensions(X509 *x)
     X509_EXTENSION *ex;
     int i;
 
+#ifdef tsan_ld_acq
     /* fast lock-free check, see end of the function for details. */
-    if (x->ex_cached)
+    if (tsan_ld_acq((TSAN_QUALIFIER int *)&x->ex_cached))
         return;
+#endif
 
     CRYPTO_THREAD_write_lock(x->lock);
     if (x->ex_flags & EXFLAG_SET) {
@@ -494,14 +498,17 @@ static void x509v3_cache_extensions(X509 *x)
             break;
         }
     }
+    x509_init_sig_info(x);
     x->ex_flags |= EXFLAG_SET;
-    CRYPTO_THREAD_unlock(x->lock);
+#ifdef tsan_st_rel
+    tsan_st_rel((TSAN_QUALIFIER int *)&x->ex_cached, 1);
     /*
-     * It has to be placed after memory barrier, which is implied by unlock.
-     * Worst thing that can happen is that another thread proceeds to lock
-     * and checks x->ex_flags & EXFLAGS_SET. See beginning of the function.
+     * Above store triggers fast lock-free check in the beginning of the
+     * function. But one has to ensure that the structure is "stable", i.e.
+     * all stores are visible on all processors. Hence the release fence.
      */
-    x->ex_cached = 1;
+#endif
+    CRYPTO_THREAD_unlock(x->lock);
 }
 
 /*-
@@ -862,6 +869,20 @@ const ASN1_OCTET_STRING *X509_get0_authority_key_id(X509 *x)
     /* Call for side-effect of computing hash and caching extensions */
     X509_check_purpose(x, -1, -1);
     return (x->akid != NULL ? x->akid->keyid : NULL);
+}
+
+const GENERAL_NAMES *X509_get0_authority_issuer(X509 *x)
+{
+    /* Call for side-effect of computing hash and caching extensions */
+    X509_check_purpose(x, -1, -1);
+    return (x->akid != NULL ? x->akid->issuer : NULL);
+}
+
+const ASN1_INTEGER *X509_get0_authority_serial(X509 *x)
+{
+    /* Call for side-effect of computing hash and caching extensions */
+    X509_check_purpose(x, -1, -1);
+    return (x->akid != NULL ? x->akid->serial : NULL);
 }
 
 long X509_get_pathlen(X509 *x)
