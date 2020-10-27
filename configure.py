@@ -13,6 +13,12 @@ libssh2_root = os.path.join( os.path.abspath( root_dir ), 'libssh2' )
 sys.path.insert( 0, os.path.join( root_dir, 'build', 'gyp', 'pylib' ) )
 import gyp
 
+def host_arch():
+    machine = platform.machine()
+    if machine == 'i386':
+        return 'ia32'
+    return 'x64'
+
 # parse our options
 parser = optparse.OptionParser()
 
@@ -30,7 +36,7 @@ parser.add_option( '--target-arch',
                 type='choice',
                 choices=['ia32', 'x64'],
                 help='CPU architecture to build for. [default: %default]',
-                default='ia32')
+                default=host_arch() )
 
 ( options, args ) = parser.parse_args()
 
@@ -81,14 +87,6 @@ def configure_buildsystem( o ):
     # copy libssh2_config.h
     shutil.copy( os.path.join( root_dir, "build\\libssh2_config.h" ),
                 os.path.join( libssh2_root, "include\\libssh2_config.h" ) )
-
-
-def host_arch():
-    machine = platform.machine()
-    if machine == 'i386':
-        return 'ia32'
-    return 'x64'
-
 
 def run_gyp( args ):
     """

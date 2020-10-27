@@ -6,30 +6,29 @@ MANUAL document. Find out how to install Curl by reading the INSTALL
 document.
 
 libcurl is the library curl is using to do its job. It is readily
-available to be used by your software. 
+available to be used by your software.
 
 # About
 
-This repository is a collection of submodules (dependencies)
-that curl need to build successfully. Each submodule tracks
-the latest known git release tag. In order to make 
-this easy to maintain i converted the buildsystem to GYP. 
-Please note that this is not a **_FORK_** and no patches has
-been applied or sent upstream.
+This is repo is mostly being used by the Node.js native addon [`node-libcurl`](https://github.com/JCMais/node-libcurl)
 
-By following the tutorial below, you should be able build
-a working, statically linked version of the latest libcurl.
+This was originally a fork of the project https://github.com/peters/curl-for-windows
+
+This repository is a collection of dependencies that curl need to build successfully.
+Each submodule tries to track the latest known git release tag. When not using a git submodule
+for the dependency, the direct source code was added to this repository, this is the case for
+`nghttp2`, `openssl`, and `cares`, for these, their .gyp files were retrieved from the Node.js
+source code.
 
 **Both x86 and x64 builds are supported.**
 
-Happy linking ;)
-
-# Curl dependencies
+# libcurl dependencies
 
 - [Openssl](https://github.com/openssl/openssl)
 - [Libssh2](http://libssh2.org)
 - [nghttp2](https://nghttp2.org/)
 - [Zlib](http://zlib.net)
+- [cares](https://c-ares.haxx.se/)
 
 # Prerequisites
 
@@ -84,6 +83,8 @@ in the official curl repository.
   - libcurl.lib
   - openssl.lib
   - libssh2.lib
+  - brotli.lib
+  - cares.lib
   - zlib.lib
   - wsock32.lib
   - wldap32.lib
@@ -132,4 +133,20 @@ At the time of writing this, the upgrade process was as easy as:
     to:  
     ```python
     0 >= 1
-    ``` 
+    ```
+
+## Upgrading c-ares
+
+c-ares is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/cares
+
+At the time of writing this, the upgrade process was as easy as:
+1. copy the folder over.
+2. done
+
+## Upgrading brotli
+
+brotli is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/brotli
+
+At the time of writing this, the upgrade process was as easy as:
+1. copy the folder over.
+2. on `brotli/brotli.gyp` replace `'type': 'static_library'` with `'type': '<(library)'`
