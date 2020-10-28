@@ -29,6 +29,7 @@ source code.
 - [nghttp2](https://nghttp2.org/)
 - [Zlib](http://zlib.net)
 - [cares](https://c-ares.haxx.se/)
+- [brotli](https://github.com/google/brotli)
 
 # Prerequisites
 
@@ -89,6 +90,10 @@ in the official curl repository.
   - wsock32.lib
   - wldap32.lib
   - ws2_32.lib
+
+The following libraries are available here, but not being used (yet):
+- nghttp3
+- nghtcp2
   
 By now you should have sweet, statically linked, CURL! ;)
 
@@ -115,10 +120,9 @@ Same than libcurl
 
 nghttp2 is based on Node.js version: https://github.com/nodejs/node/blob/v12.16.1/deps/nghttp2
 
-To upgrade:
-1. Download the zip source code of the latest stable version of Node.js, like: https://github.com/nodejs/node/archive/v12.16.1.zip
-2. Copy the `deps/nghttp2` folder somewhere and compare their contents with the one on this repository
-3. Apply the necessary changes and commit them.
+At the time of writing this, the upgrade process was as easy as:
+1. copy the folder over.
+2. done
 
 ## Upgrading OpenSSL
 
@@ -126,14 +130,7 @@ OpenSSL is based on Node.js version: https://github.com/nodejs/node/blob/v10.15.
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. on `openssl/openssl.gyp` replace the conditions like:
-    ```python
-    v(nasm_version) >= v("2.11.8")
-    ```
-    to:  
-    ```python
-    0 >= 1
-    ```
+2. done
 
 ## Upgrading c-ares
 
