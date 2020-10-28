@@ -3,6 +3,7 @@
     'gas_version%': '0.0',
     'llvm_version%': '0.0',
     'nasm_version%': '0.0',
+    'experimental_quic%': '0',
   },
   'targets': [
     {

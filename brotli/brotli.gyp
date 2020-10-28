@@ -2,7 +2,7 @@
   'targets': [
     {
       'target_name': 'brotli',
-      'type': '<(library)',
+      'type': 'static_library',
       'include_dirs': ['c/include'],
       'conditions': [
         ['OS=="linux"', {

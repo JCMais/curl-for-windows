@@ -20,11 +20,11 @@
             'WIN32',
             '_WINDOWS',
           ],
-          'msvs_settings': {
-            'VCCLCompilerTool': {
-              'CompileAs': '1'
-            },
-          },
+          # 'msvs_settings': {
+          #   'VCCLCompilerTool': {
+          #     'CompileAs': '1'
+          #   },
+          # },
         }],
         ['debug_nghttp2 == 1', {
           'defines': [ 'DEBUGBUILD=1' ]

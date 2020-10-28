@@ -93,7 +93,7 @@ in the official curl repository.
 
 The following libraries are available here, but not being used (yet):
 - nghttp3
-- nghtcp2
+- ngtcp2
   
 By now you should have sweet, statically linked, CURL! ;)
 
@@ -122,7 +122,16 @@ nghttp2 is based on Node.js version: https://github.com/nodejs/node/blob/v12.16.
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. done
+2. on `nghttp2/nghttp2.gyp`:
+   1. Comment:
+      ```
+          'msvs_settings': {
+            'VCCLCompilerTool': {
+              'CompileAs': '1'
+            },
+          },
+      ```
+3. done.
 
 ## Upgrading OpenSSL
 
@@ -130,7 +139,9 @@ OpenSSL is based on Node.js version: https://github.com/nodejs/node/blob/v10.15.
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. done
+2. on `openssl/openssl.gyp`:
+   1. Add `'experimental_quic%': '0',` to the list of variables.
+3. done.
 
 ## Upgrading c-ares
 
@@ -138,7 +149,7 @@ c-ares is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. done
+2. done.
 
 ## Upgrading brotli
 
@@ -146,4 +157,21 @@ brotli is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. on `brotli/brotli.gyp` replace `'type': 'static_library'` with `'type': '<(library)'`
+2. done.
+
+## Upgrading nghttp3
+
+nghttp3 is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/nghttp3
+
+At the time of writing this, the upgrade process was as easy as:
+1. copy the folder over.
+2. done.
+
+
+## Upgrading ngtcp2
+
+ngtcp2 is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/ngtcp2
+
+At the time of writing this, the upgrade process was as easy as:
+1. copy the folder over.
+2. done.
