@@ -13,9 +13,9 @@
 #include <openssl/kdf.h>
 #include <openssl/evp.h>
 #include "internal/cryptlib.h"
-#include "internal/evp_int.h"
+#include "crypto/evp.h"
 
-#define HKDF_MAXBUF 1024
+#define HKDF_MAXBUF 2048
 
 static unsigned char *HKDF(const EVP_MD *evp_md,
                            const unsigned char *salt, size_t salt_len,

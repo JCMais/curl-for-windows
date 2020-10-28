@@ -51,6 +51,10 @@ def configure_defines(o):
     """
     Configures libcurl
     """
+    # we probably can make this a config option here...
+    o.extend(['-D', 'experimental_quic=0'])
+    o.extend(['-D', 'openssl_no_asm=0'])
+    # general options
     o.extend(['-D', 'target_arch=%s' % getoption(options.target_arch, host_arch())])
     o.extend(['-D', 'host_arch=%s' % getoption(options.target_arch, host_arch())])
     o.extend(['-D', 'library=static_library'])
