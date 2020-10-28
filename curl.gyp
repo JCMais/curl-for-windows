@@ -20,6 +20,9 @@
         'USE_SSLEAY',
         'USE_OPENSSL',
         'USE_NGHTTP2',
+        # TODO: disabled, enable when we get http3 to work
+        #'USE_NGHTTP3',
+        #'USE_NGTCP2',
         'USE_IPV6',
         'USE_LIBSSH2',
         'USE_ZLIB',
@@ -39,7 +42,10 @@
         'openssl/openssl.gyp:openssl',
         'libssh2.gyp:libssh2',
         'zlib.gyp:zlib',
-        'nghttp2/nghttp2.gyp:nghttp2'
+        'nghttp2/nghttp2.gyp:nghttp2',
+        # TODO: disabled, enable when we get http3 to work
+        #'nghttp3/nghttp3.gyp:nghttp3',
+        #'ngtcp2/ngtcp2.gyp:ngtcp2',
       ],
       'direct_dependent_settings': {
         'conditions': [
