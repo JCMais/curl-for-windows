@@ -1,6 +1,8 @@
 .idea/
+.vscode/
 out/
 *.sln
+*.vcproj
 *.vcxproj
 *.vcxproj.filters
 *.pyc
@@ -49,6 +51,7 @@ x64/
 *.vspscc
 *.vssscc
 .builds
+*.rules
 
 # Visual C++ cache files
 ipch/
