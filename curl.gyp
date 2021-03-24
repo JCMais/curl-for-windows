@@ -16,7 +16,8 @@
         'curl/include',
       ],
       'defines': [
-        'USE_ARES',
+        # c-ares is disabled at the moment due to this: https://github.com/JCMais/node-libcurl/issues/280
+        # 'USE_ARES',
         'USE_SSLEAY',
         'USE_OPENSSL',
         'USE_NGHTTP2',
@@ -37,7 +38,8 @@
         'BUILDING_LIBCURL',
       ],
       'dependencies': [
-        'cares/cares.gyp:cares',
+        # c-ares is disabled at the moment due to this: https://github.com/JCMais/node-libcurl/issues/280
+        # 'cares/cares.gyp:cares',
         'brotli/brotli.gyp:brotli',
         'openssl/openssl.gyp:openssl',
         'libssh2.gyp:libssh2',
