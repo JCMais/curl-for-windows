@@ -118,7 +118,7 @@ Same than libcurl
 
 # Upgrading nghttp2
 
-nghttp2 is based on Node.js version: https://github.com/nodejs/node/blob/v12.16.1/deps/nghttp2
+nghttp2 is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/nghttp2
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
@@ -135,17 +135,15 @@ At the time of writing this, the upgrade process was as easy as:
 
 ## Upgrading OpenSSL
 
-OpenSSL is based on Node.js version: https://github.com/nodejs/node/blob/v10.15.0/deps/openssl
+OpenSSL is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/openssl
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. on `openssl/openssl.gyp`:
-   1. Add `'experimental_quic%': '0',` to the list of variables.
-3. done.
+2. done.
 
 ## Upgrading c-ares
 
-c-ares is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/cares
+c-ares is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/cares
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
@@ -153,7 +151,7 @@ At the time of writing this, the upgrade process was as easy as:
 
 ## Upgrading brotli
 
-brotli is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/brotli
+brotli is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/brotli
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
@@ -161,7 +159,7 @@ At the time of writing this, the upgrade process was as easy as:
 
 ## Upgrading nghttp3
 
-nghttp3 is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/nghttp3
+nghttp3 is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/nghttp3
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
@@ -170,7 +168,7 @@ At the time of writing this, the upgrade process was as easy as:
 
 ## Upgrading ngtcp2
 
-ngtcp2 is based on Node.js version: https://github.com/nodejs/node/blob/v15.0.0/deps/ngtcp2
+ngtcp2 is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/deps/ngtcp2
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.

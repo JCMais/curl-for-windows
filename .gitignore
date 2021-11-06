@@ -9,9 +9,9 @@ out/
 .vs/
 
 # openssl nasm files
-openssl/openssl.props
-openssl/openssl.targets
-openssl/openssl.xml
+openssl/openssl*.props
+openssl/openssl*.targets
+openssl/openssl*.xml
 
 # SVN folder
 .svn*

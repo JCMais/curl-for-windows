@@ -1,9 +1,14 @@
+# This is kinda based on Node.js configure: https://github.com/nodejs/node/blob/f233cb2c29007ecb2e3bdeca2053df266c47994c/configure.py
+
 from __future__ import print_function
 
 import optparse
 import os
 import sys
 import shutil
+import re
+import shlex
+import subprocess
 import platform
 
 script_dir   = os.path.dirname( __file__ )
@@ -42,12 +47,37 @@ parser.add_option( '--target-arch',
 
 ( options, args ) = parser.parse_args()
 
+def to_utf8(s):
+  return s if isinstance(s, str) else s.decode("utf-8")
+
+def warn(msg):
+  warn.warned = True
+  prefix = '\033[1m\033[93mWARNING\033[0m' if os.isatty(1) else 'WARNING'
+  print('%s: %s' % (prefix, msg))
 
 def getoption( value, default ):
   if not value:
     return default
   return value
 
+def get_nasm_version(asm):
+  try:
+    proc = subprocess.Popen(shlex.split(asm) + ['-v'],
+                            stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+  except OSError:
+    warn('''No acceptable ASM compiler found!
+         Please make sure you have installed NASM from https://www.nasm.us
+         and refer BUILDING.md.''')
+    return '0.0'
+
+  match = re.match(r"NASM version ([2-9]\.[0-9][0-9]+)",
+                   to_utf8(proc.communicate()[0]))
+
+  if match:
+    return match.group(1)
+  else:
+    return '0.0'
 
 def configure_defines(o):
     """
@@ -56,11 +86,18 @@ def configure_defines(o):
     # we probably can make this a config option here...
     o.extend(['-D', 'experimental_quic=0'])
     o.extend(['-D', 'openssl_no_asm=0'])
+    nasm_version = get_nasm_version('nasm')
+    if nasm_version == '0.0':
+        raise Exception('nasm not found.')
+    o.extend(['-D', 'nasm_version=%s' % nasm_version])
     o.extend(['-D', 'debug_nghttp2=0'])
+    # nodejs options
+    o.extend(['-D', 'node_shared_openssl=false'])
     # general options
     o.extend(['-D', 'target_arch=%s' % getoption(options.target_arch, host_arch())])
     o.extend(['-D', 'host_arch=%s' % getoption(options.target_arch, host_arch())])
     o.extend(['-D', 'library=static_library'])
+    # should we set OPENSSL_THREADS?
 
 
 def configure_buildsystem( o ):
@@ -84,6 +121,8 @@ def configure_buildsystem( o ):
     o.append( '--depth=' + root_dir )
     o.extend( ['-G', 'output_dir=' + os.path.join( output_dir, options.target_arch )] )
     o.append( '--generator-output=' + os.path.join( output_dir, options.target_arch ) )
+    # this may not be needed after we upgrade gyp
+    o.extend( ['-D', 'PRODUCT_DIR_ABS=' + os.path.join( output_dir, options.target_arch )] )
     # o.append( '--suffix=.' + options.target_arch )
     #o.append( '--help' )
 
