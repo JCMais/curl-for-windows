@@ -6,6 +6,12 @@ out/
 *.vcxproj
 *.vcxproj.filters
 *.pyc
+.vs/
+
+# openssl nasm files
+openssl/openssl.props
+openssl/openssl.targets
+openssl/openssl.xml
 
 # SVN folder
 .svn*

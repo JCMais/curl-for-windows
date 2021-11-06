@@ -28,7 +28,7 @@ parser.add_option( '--toolchain',
                 action='store',
                 type='choice',
                 dest='toolchain',
-                choices=['2008', '2010', '2012', '2013', '2015', '2017', 'auto'],
+                choices=['2008', '2010', '2012', '2013', '2015', '2017', '2019', 'auto'],
                 help='msvs toolchain to build for. [default: %default]',
                 default='auto')
 
