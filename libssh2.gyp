@@ -15,6 +15,7 @@
       ],
       'sources': [
         'libssh2/src/agent.c',
+        'libssh2/src/agent_win.c',
         'libssh2/src/bcrypt_pbkdf.c',
         'libssh2/src/blf.h',
         'libssh2/src/blowfish.c',
