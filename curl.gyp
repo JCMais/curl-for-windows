@@ -46,7 +46,7 @@
         'zlib.gyp:zlib',
         'nghttp2/nghttp2.gyp:nghttp2',
         # TODO: disabled, enable when we get http3 to work
-        #'nghttp3/nghttp3.gyp:nghttp3',
+        #'ngtcp2/ngtcp2.gyp:nghttp3',
         #'ngtcp2/ngtcp2.gyp:ngtcp2',
       ],
       'direct_dependent_settings': {
