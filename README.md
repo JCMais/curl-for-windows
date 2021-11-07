@@ -139,7 +139,8 @@ OpenSSL is based on Node.js version: https://github.com/nodejs/node/tree/v17.x/d
 
 At the time of writing this, the upgrade process was as easy as:
 1. copy the folder over.
-2. done.
+2. Replace `<(PRODUCT_DIR_ABS)/` with `<(PRODUCT_DIR)/`.
+3. done.
 
 ## Upgrading c-ares
 

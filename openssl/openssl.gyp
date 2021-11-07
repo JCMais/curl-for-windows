@@ -6,22 +6,22 @@
     'openssl-cli': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)openssl-cli<(EXECUTABLE_SUFFIX)',
     'conditions': [
       ['OS == "win"', {
-        'obj_dir_abs': '<(PRODUCT_DIR_ABS)/obj',
-        'openssl_dir': '<(PRODUCT_DIR_ABS)/obj/lib',
+        'obj_dir_abs': '<(PRODUCT_DIR)/obj',
+        'openssl_dir': '<(PRODUCT_DIR)/obj/lib',
       }],
       ['GENERATOR == "ninja"', {
-        'obj_dir_abs': '<(PRODUCT_DIR_ABS)/obj',
-        'modules_dir': '<(PRODUCT_DIR_ABS)/obj/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR_ABS)/obj/lib',
+        'obj_dir_abs': '<(PRODUCT_DIR)/obj',
+        'modules_dir': '<(PRODUCT_DIR)/obj/lib/openssl-modules',
+        'openssl_dir': '<(PRODUCT_DIR)/obj/lib',
       }, {
-        'obj_dir_abs%': '<(PRODUCT_DIR_ABS)/obj.target',
-        'modules_dir': '<(PRODUCT_DIR_ABS)/obj.target/deps/openssl/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR_ABS)/obj.target/deps/openssl',
+        'obj_dir_abs%': '<(PRODUCT_DIR)/obj.target',
+        'modules_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules',
+        'openssl_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl',
       }],
       ['OS=="mac"', {
-        'obj_dir_abs%': '<(PRODUCT_DIR_ABS)/obj.target',
-        'modules_dir': '<(PRODUCT_DIR_ABS)/obj.target/deps/openssl/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR_ABS)/obj.target/deps/openssl',
+        'obj_dir_abs%': '<(PRODUCT_DIR)/obj.target',
+        'modules_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules',
+        'openssl_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl',
       }],
     ],
   },
