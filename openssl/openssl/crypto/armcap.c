@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2011-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -112,20 +112,23 @@ static unsigned long getauxval(unsigned long key)
  * ARM puts the feature bits for Crypto Extensions in AT_HWCAP2, whereas
  * AArch64 used AT_HWCAP.
  */
+# ifndef AT_HWCAP
+#  define AT_HWCAP               16
+# endif
+# ifndef AT_HWCAP2
+#  define AT_HWCAP2              26
+# endif
 # if defined(__arm__) || defined (__arm)
-#  define HWCAP                  16
-                                  /* AT_HWCAP */
+#  define HWCAP                  AT_HWCAP
 #  define HWCAP_NEON             (1 << 12)
 
-#  define HWCAP_CE               26
-                                  /* AT_HWCAP2 */
+#  define HWCAP_CE               AT_HWCAP2
 #  define HWCAP_CE_AES           (1 << 0)
 #  define HWCAP_CE_PMULL         (1 << 1)
 #  define HWCAP_CE_SHA1          (1 << 2)
 #  define HWCAP_CE_SHA256        (1 << 3)
 # elif defined(__aarch64__)
-#  define HWCAP                  16
-                                  /* AT_HWCAP */
+#  define HWCAP                  AT_HWCAP
 #  define HWCAP_NEON             (1 << 1)
 
 #  define HWCAP_CE               HWCAP
@@ -254,11 +257,11 @@ void OPENSSL_cpuid_setup(void)
     }
 # endif
 
-    /* Things that getauxval didn't tell us */
-    if (sigsetjmp(ill_jmp, 1) == 0) {
-        _armv7_tick();
-        OPENSSL_armcap_P |= ARMV7_TICK;
-    }
+    /*
+     * Probing for ARMV7_TICK is known to produce unreliable results,
+     * so we will only use the feature when the user explicitly enables
+     * it with OPENSSL_armcap.
+     */
 
     sigaction(SIGILL, &ill_oact, NULL);
     sigprocmask(SIG_SETMASK, &oset, NULL);

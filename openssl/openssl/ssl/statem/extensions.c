@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -103,6 +103,9 @@ typedef struct extensions_definition_st {
  * Definitions of all built-in extensions. NOTE: Changes in the number or order
  * of these extensions should be mirrored with equivalent changes to the
  * indexes ( TLSEXT_IDX_* ) defined in ssl_local.h.
+ * Extensions should be added to test/ext_internal_test.c as well, as that
+ * tests the ordering of the extensions.
+ *
  * Each extension has an initialiser, a client and
  * server side parser and a finaliser. The initialiser is called (if the
  * extension is relevant to the given context) even if we did not see the
@@ -123,7 +126,7 @@ typedef struct extensions_definition_st {
  * NOTE: WebSphere Application Server 7+ cannot handle empty extensions at
  * the end, keep these extensions before signature_algorithm.
  */
-#define INVALID_EXTENSION { 0x10000, 0, NULL, NULL, NULL, NULL, NULL, NULL }
+#define INVALID_EXTENSION { TLSEXT_TYPE_invalid, 0, NULL, NULL, NULL, NULL, NULL, NULL }
 static const EXTENSION_DEFINITION ext_defs[] = {
     {
         TLSEXT_TYPE_renegotiate,
@@ -412,6 +415,17 @@ static const EXTENSION_DEFINITION ext_defs[] = {
         tls_construct_ctos_psk, final_psk
     }
 };
+
+/* Returns a TLSEXT_TYPE for the given index */
+unsigned int ossl_get_extension_type(size_t idx)
+{
+    size_t num_exts = OSSL_NELEM(ext_defs);
+
+    if (idx >= num_exts)
+        return TLSEXT_TYPE_out_of_range;
+
+    return ext_defs[idx].type;
+}
 
 /* Check whether an extension's context matches the current context */
 static int validate_context(SSL *s, unsigned int extctx, unsigned int thisctx)
@@ -925,6 +939,15 @@ static int final_renegotiate(SSL *s, unsigned int context, int sent)
     return 1;
 }
 
+static ossl_inline void ssl_tsan_decr(const SSL_CTX *ctx,
+                                      TSAN_QUALIFIER int *stat)
+{
+    if (ssl_tsan_lock(ctx)) {
+        tsan_decr(stat);
+        ssl_tsan_unlock(ctx);
+    }
+}
+
 static int init_server_name(SSL *s, unsigned int context)
 {
     if (s->server) {
@@ -982,8 +1005,8 @@ static int final_server_name(SSL *s, unsigned int context, int sent)
      */
     if (SSL_IS_FIRST_HANDSHAKE(s) && s->ctx != s->session_ctx
             && s->hello_retry_request == SSL_HRR_NONE) {
-        tsan_counter(&s->ctx->stats.sess_accept);
-        tsan_decr(&s->session_ctx->stats.sess_accept);
+        ssl_tsan_counter(s->ctx, &s->ctx->stats.sess_accept);
+        ssl_tsan_decr(s->session_ctx, &s->session_ctx->stats.sess_accept);
     }
 
     /*

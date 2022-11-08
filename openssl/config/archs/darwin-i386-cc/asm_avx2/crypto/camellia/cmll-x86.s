@@ -3,7 +3,11 @@
 .align	4
 _Camellia_EncryptBlock_Rounds:
 L_Camellia_EncryptBlock_Rounds_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -56,7 +60,11 @@ L000pic_point:
 .align	4
 _Camellia_EncryptBlock:
 L_Camellia_EncryptBlock_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	$128,%eax
 	subl	4(%esp),%eax
 	movl	$3,%eax
@@ -67,7 +75,11 @@ L_Camellia_EncryptBlock_begin:
 .align	4
 _Camellia_encrypt:
 L_Camellia_encrypt_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -118,7 +130,11 @@ L001pic_point:
 	ret
 .align	4
 __x86_Camellia_encrypt:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	xorl	(%edi),%eax
 	xorl	4(%edi),%ebx
 	xorl	8(%edi),%ecx
@@ -347,7 +363,11 @@ L003done:
 .align	4
 _Camellia_DecryptBlock_Rounds:
 L_Camellia_DecryptBlock_Rounds_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -400,7 +420,11 @@ L004pic_point:
 .align	4
 _Camellia_DecryptBlock:
 L_Camellia_DecryptBlock_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	$128,%eax
 	subl	4(%esp),%eax
 	movl	$3,%eax
@@ -411,7 +435,11 @@ L_Camellia_DecryptBlock_begin:
 .align	4
 _Camellia_decrypt:
 L_Camellia_decrypt_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -462,7 +490,11 @@ L005pic_point:
 	ret
 .align	4
 __x86_Camellia_decrypt:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	xorl	(%edi),%eax
 	xorl	4(%edi),%ebx
 	xorl	8(%edi),%ecx
@@ -691,7 +723,11 @@ L007done:
 .align	4
 _Camellia_Ekeygen:
 L_Camellia_Ekeygen_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -1531,7 +1567,11 @@ L013done:
 .align	4
 _Camellia_set_key:
 L_Camellia_set_key_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebx
 	movl	8(%esp),%ecx
 	movl	12(%esp),%ebx
@@ -2082,7 +2122,11 @@ LCamellia_SBOX:
 .align	4
 _Camellia_cbc_encrypt:
 L_Camellia_cbc_encrypt_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi

@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
@@ -362,6 +362,13 @@ void ssl_cert_set_cert_cb(CERT *c, int (*cb) (SSL *ssl, void *arg), void *arg)
     c->cert_cb_arg = arg;
 }
 
+/*
+ * Verify a certificate chain
+ * Return codes:
+ *  1: Verify success
+ *  0: Verify failure or error
+ * -1: Retry required
+ */
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk)
 {
     X509 *x;
@@ -423,10 +430,14 @@ int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk)
     if (s->verify_callback)
         X509_STORE_CTX_set_verify_cb(ctx, s->verify_callback);
 
-    if (s->ctx->app_verify_callback != NULL)
+    if (s->ctx->app_verify_callback != NULL) {
         i = s->ctx->app_verify_callback(ctx, s->ctx->app_verify_arg);
-    else
+    } else {
         i = X509_verify_cert(ctx);
+        /* We treat an error in the same way as a failure to verify */
+        if (i < 0)
+            i = 0;
+    }
 
     s->verify_result = X509_STORE_CTX_get_error(ctx);
     sk_X509_pop_free(s->verified_chain, X509_free);
@@ -625,7 +636,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file_ex(const char *file,
         ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
         goto err;
     }
-    if (!BIO_read_filename(in, file))
+    if (BIO_read_filename(in, file) <= 0)
         goto err;
 
     /* Internally lh_X509_NAME_retrieve() needs the libctx to retrieve SHA1 */
@@ -696,7 +707,7 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
         goto err;
     }
 
-    if (!BIO_read_filename(in, file))
+    if (BIO_read_filename(in, file) <= 0)
         goto err;
 
     for (;;) {
@@ -960,6 +971,12 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref)
     return 1;
 }
 
+int ssl_cert_get_cert_store(CERT *c, X509_STORE **pstore, int chain)
+{
+    *pstore = (chain ? c->chain_store : c->verify_store);
+    return 1;
+}
+
 int ssl_get_security_level_bits(const SSL *s, const SSL_CTX *ctx, int *levelp)
 {
     int level;
@@ -990,7 +1007,7 @@ static int ssl_security_default_callback(const SSL *s, const SSL_CTX *ctx,
                                          int op, int bits, int nid, void *other,
                                          void *ex)
 {
-    int level, minbits;
+    int level, minbits, pfs_mask;
 
     minbits = ssl_get_security_level_bits(s, ctx, &level);
 
@@ -1025,8 +1042,9 @@ static int ssl_security_default_callback(const SSL *s, const SSL_CTX *ctx,
             if (level >= 2 && c->algorithm_enc == SSL_RC4)
                 return 0;
             /* Level 3: forward secure ciphersuites only */
+            pfs_mask = SSL_kDHE | SSL_kECDHE | SSL_kDHEPSK | SSL_kECDHEPSK;
             if (level >= 3 && c->min_tls != TLS1_3_VERSION &&
-                               !(c->algorithm_mkey & (SSL_kEDH | SSL_kEECDH)))
+                               !(c->algorithm_mkey & pfs_mask))
                 return 0;
             break;
         }

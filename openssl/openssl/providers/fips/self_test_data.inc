@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2019-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -18,7 +18,7 @@
     { name, OSSL_PARAM_OCTET_STRING, ITM(data) }
 #define ST_KAT_PARAM_UTF8STRING(name, data)                                    \
     { name, OSSL_PARAM_UTF8_STRING, ITM_STR(data) }
-#define ST_KAT_PARAM_UTF8CHAR(name, data)                                    \
+#define ST_KAT_PARAM_UTF8CHAR(name, data)                                      \
     { name, OSSL_PARAM_UTF8_STRING, ITM(data) }
 #define ST_KAT_PARAM_INT(name, i)                                              \
     { name, OSSL_PARAM_INTEGER, ITM(i) }
@@ -1270,11 +1270,11 @@ static const ST_KAT_PARAM rsa_crt_key[] = {
     ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_N, rsa_n),
     ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_E, rsa_e),
     ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_D, rsa_d),
-    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_FACTOR, rsa_p),
-    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_FACTOR, rsa_q),
-    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_EXPONENT, rsa_dp),
-    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_EXPONENT, rsa_dq),
-    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_COEFFICIENT, rsa_qInv),
+    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_FACTOR1, rsa_p),
+    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_FACTOR2, rsa_q),
+    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_EXPONENT1, rsa_dp),
+    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_EXPONENT2, rsa_dq),
+    ST_KAT_PARAM_BIGNUM(OSSL_PKEY_PARAM_RSA_COEFFICIENT1, rsa_qInv),
     ST_KAT_PARAM_END()
 };
 
@@ -1291,9 +1291,15 @@ static const ST_KAT_PARAM rsa_priv_key[] = {
     ST_KAT_PARAM_END()
 };
 
+/*-
+ * Using OSSL_PKEY_RSA_PAD_MODE_NONE directly in the expansion of the
+ * ST_KAT_PARAM_UTF8STRING macro below causes a failure on ancient
+ * HP/UX PA-RISC compilers.
+ */
+static const char pad_mode_none[] = OSSL_PKEY_RSA_PAD_MODE_NONE;
+
 static const ST_KAT_PARAM rsa_enc_params[] = {
-    ST_KAT_PARAM_UTF8STRING(OSSL_ASYM_CIPHER_PARAM_PAD_MODE,
-                            OSSL_PKEY_RSA_PAD_MODE_NONE),
+    ST_KAT_PARAM_UTF8STRING(OSSL_ASYM_CIPHER_PARAM_PAD_MODE, pad_mode_none),
     ST_KAT_PARAM_END()
 };
 

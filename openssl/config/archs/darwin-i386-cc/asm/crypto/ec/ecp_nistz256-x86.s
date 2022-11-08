@@ -2386,7 +2386,11 @@ LONE:
 .align	4
 _ecp_nistz256_mul_by_2:
 L_ecp_nistz256_mul_by_2_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2404,7 +2408,11 @@ L_ecp_nistz256_mul_by_2_begin:
 .align	4
 _ecp_nistz256_mul_by_3:
 L_ecp_nistz256_mul_by_3_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2428,7 +2436,11 @@ L_ecp_nistz256_mul_by_3_begin:
 .align	4
 _ecp_nistz256_div_by_2:
 L_ecp_nistz256_div_by_2_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2443,7 +2455,11 @@ L_ecp_nistz256_div_by_2_begin:
 	ret
 .align	4
 __ecp_nistz256_div_by_2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	(%esi),%ebp
 	xorl	%edx,%edx
 	movl	4(%esi),%ebx
@@ -2525,7 +2541,11 @@ __ecp_nistz256_div_by_2:
 .align	4
 _ecp_nistz256_add:
 L_ecp_nistz256_add_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2541,7 +2561,11 @@ L_ecp_nistz256_add_begin:
 	ret
 .align	4
 __ecp_nistz256_add:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	(%esi),%eax
 	movl	4(%esi),%ebx
 	movl	8(%esi),%ecx
@@ -2617,7 +2641,11 @@ __ecp_nistz256_add:
 .align	4
 _ecp_nistz256_sub:
 L_ecp_nistz256_sub_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2633,7 +2661,11 @@ L_ecp_nistz256_sub_begin:
 	ret
 .align	4
 __ecp_nistz256_sub:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	(%esi),%eax
 	movl	4(%esi),%ebx
 	movl	8(%esi),%ecx
@@ -2690,7 +2722,11 @@ __ecp_nistz256_sub:
 .align	4
 _ecp_nistz256_neg:
 L_ecp_nistz256_neg_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2717,14 +2753,22 @@ L_ecp_nistz256_neg_begin:
 	ret
 .align	4
 __picup_eax:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	(%esp),%eax
 	ret
 .globl	_ecp_nistz256_to_mont
 .align	4
 _ecp_nistz256_to_mont:
 L_ecp_nistz256_to_mont_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2746,7 +2790,11 @@ L000pic:
 .align	4
 _ecp_nistz256_from_mont:
 L_ecp_nistz256_from_mont_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2768,7 +2816,11 @@ L001pic:
 .align	4
 _ecp_nistz256_mul_mont:
 L_ecp_nistz256_mul_mont_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2790,7 +2842,11 @@ L002pic:
 .align	4
 _ecp_nistz256_sqr_mont:
 L_ecp_nistz256_sqr_mont_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2810,7 +2866,11 @@ L003pic:
 	ret
 .align	4
 __ecp_nistz256_mul_mont:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	andl	$83886080,%eax
 	cmpl	$83886080,%eax
 	jne	L004mul_mont_ialu
@@ -3706,7 +3766,11 @@ L004mul_mont_ialu:
 .align	4
 _ecp_nistz256_scatter_w5:
 L_ecp_nistz256_scatter_w5_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -3738,7 +3802,11 @@ L006scatter_w5_loop:
 .align	4
 _ecp_nistz256_gather_w5:
 L_ecp_nistz256_gather_w5_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -3831,7 +3899,11 @@ L_ecp_nistz256_gather_w5_begin:
 .align	4
 _ecp_nistz256_scatter_w7:
 L_ecp_nistz256_scatter_w7_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -3861,7 +3933,11 @@ L007scatter_w7_loop:
 .align	4
 _ecp_nistz256_gather_w7:
 L_ecp_nistz256_gather_w7_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -4074,7 +4150,11 @@ L_ecp_nistz256_gather_w7_begin:
 .align	4
 _ecp_nistz256_point_double:
 L_ecp_nistz256_point_double_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -4199,7 +4279,11 @@ Lpoint_double_shortcut:
 .align	4
 _ecp_nistz256_point_add:
 L_ecp_nistz256_point_add_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -4711,7 +4795,11 @@ L012add_done:
 .align	4
 _ecp_nistz256_point_add_affine:
 L_ecp_nistz256_point_add_affine_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi

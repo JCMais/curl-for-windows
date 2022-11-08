@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -61,7 +61,7 @@ const OPTIONS x509_options[] = {
     {"help", OPT_HELP, '-', "Display this summary"},
 
     {"in", OPT_IN, '<',
-     "Certificate input (default stdin), or CSR input file with -req"},
+     "Certificate input, or CSR input file with -req (default stdin)"},
     {"passin", OPT_PASSIN, 's', "Private key and cert file pass-phrase source"},
     {"new", OPT_NEW, '-', "Generate a certificate from scratch"},
     {"x509toreq", OPT_X509TOREQ, '-',
@@ -73,7 +73,7 @@ const OPTIONS x509_options[] = {
      "CSR input file format (DER or PEM) - default PEM"},
     {"vfyopt", OPT_VFYOPT, 's', "CSR verification parameter in n:v form"},
     {"key", OPT_KEY, 's',
-     "Key to be used in certificate or cert request"},
+     "Key for signing, and to include unless using -force_pubkey"},
     {"signkey", OPT_SIGNKEY, 's',
      "Same as -key"},
     {"keyform", OPT_KEYFORM, 'E',
@@ -233,6 +233,21 @@ static X509_REQ *x509_to_req(X509 *cert, int ext_copy, const char *names)
     sk_X509_EXTENSION_free(exts);
     X509_REQ_free(req);
     return NULL;
+}
+
+static int self_signed(X509_STORE *ctx, X509 *cert)
+{
+    X509_STORE_CTX *xsc = X509_STORE_CTX_new();
+    int ret = 0;
+
+    if (xsc == NULL || !X509_STORE_CTX_init(xsc, ctx, cert, NULL)) {
+        BIO_printf(bio_err, "Error initialising X509 store\n");
+    } else {
+        X509_STORE_CTX_set_flags(xsc, X509_V_FLAG_CHECK_SS_SIGNATURE);
+        ret = X509_verify_cert(xsc) > 0;
+    }
+    X509_STORE_CTX_free(xsc);
+    return ret;
 }
 
 int x509_main(int argc, char **argv)
@@ -519,7 +534,7 @@ int x509_main(int argc, char **argv)
             aliasout = ++num;
             break;
         case OPT_CACREATESERIAL:
-            CA_createserial = ++num;
+            CA_createserial = 1;
             break;
         case OPT_CLREXT:
             clrext = 1;
@@ -630,7 +645,7 @@ int x509_main(int argc, char **argv)
         }
         if (privkeyfile == NULL && pubkeyfile == NULL) {
             BIO_printf(bio_err,
-                       "The -new option without -key requires using -force_pubkey\n");
+                       "The -new option requires using the -key or -force_pubkey option\n");
             goto end;
         }
     }
@@ -642,12 +657,22 @@ int x509_main(int argc, char **argv)
         CAkeyfile = CAfile;
     if (CAfile != NULL) {
         if (privkeyfile != NULL) {
-            BIO_printf(bio_err, "Cannot use both -key and -CA option\n");
+            BIO_printf(bio_err, "Cannot use both -key/-signkey and -CA option\n");
             goto end;
         }
-    } else if (CAkeyfile != NULL) {
-        BIO_printf(bio_err,
-                   "Warning: ignoring -CAkey option since no -CA option is given\n");
+    } else {
+#define WARN_NO_CA(opt) BIO_printf(bio_err, \
+        "Warning: ignoring " opt " option since -CA option is not given\n");
+        if (CAkeyfile != NULL)
+            WARN_NO_CA("-CAkey");
+        if (CAkeyformat != FORMAT_UNDEF)
+            WARN_NO_CA("-CAkeyform");
+        if (CAformat != FORMAT_UNDEF)
+            WARN_NO_CA("-CAform");
+        if (CAserial != NULL)
+            WARN_NO_CA("-CAserial");
+        if (CA_createserial)
+            WARN_NO_CA("-CAcreateserial");
     }
 
     if (extfile == NULL) {
@@ -691,9 +716,9 @@ int x509_main(int argc, char **argv)
                        : "Certificate request self-signature did not match the contents\n");
             goto end;
         }
-        BIO_printf(out, "Certificate request self-signature ok\n");
+        BIO_printf(bio_err, "Certificate request self-signature ok\n");
 
-        print_name(out, "subject=", X509_REQ_get_subject_name(req));
+        print_name(bio_err, "subject=", X509_REQ_get_subject_name(req));
     } else if (!x509toreq && ext_copy != EXT_COPY_UNSET) {
         BIO_printf(bio_err, "Warning: ignoring -copy_extensions since neither -x509toreq nor -req is given\n");
     }
@@ -710,7 +735,7 @@ int x509_main(int argc, char **argv)
         }
         if ((x = X509_new_ex(app_get0_libctx(), app_get0_propq())) == NULL)
             goto end;
-        if (sno == NULL) {
+        if (CAfile == NULL && sno == NULL) {
             sno = ASN1_INTEGER_new();
             if (sno == NULL || !rand_serial(NULL, sno))
                 goto end;
@@ -787,6 +812,8 @@ int x509_main(int argc, char **argv)
             sno = x509_load_serial(CAfile, CAserial, CA_createserial);
         if (sno == NULL)
             goto end;
+        if (!x509toreq && !reqfile && !newcert && !self_signed(ctx, x))
+            goto end;
     }
 
     if (sno != NULL && !X509_set_serialNumber(x, sno))
@@ -799,7 +826,12 @@ int x509_main(int argc, char **argv)
             goto end;
     }
 
-    X509V3_set_ctx(&ext_ctx, issuer_cert, x, req, NULL, X509V3_CTX_REPLACE);
+    X509V3_set_ctx(&ext_ctx, issuer_cert, x, NULL, NULL, X509V3_CTX_REPLACE);
+    /* prepare fallback for AKID, but only if issuer cert equals subject cert */
+    if (CAfile == NULL) {
+        if (!X509V3_set_issuer_pkey(&ext_ctx, privkey))
+            goto end;
+    }
     if (extconf != NULL && !x509toreq) {
         X509V3_set_nconf(&ext_ctx, extconf);
         if (!X509V3_EXT_add_nconf(extconf, &ext_ctx, extsect, x)) {
@@ -819,7 +851,7 @@ int x509_main(int argc, char **argv)
 
     if (x509toreq) { /* also works in conjunction with -req */
         if (privkey == NULL) {
-            BIO_printf(bio_err, "Must specify request key using -key\n");
+            BIO_printf(bio_err, "Must specify request signing key using -key\n");
             goto end;
         }
         if (clrext && ext_copy != EXT_COPY_NONE) {
@@ -856,21 +888,6 @@ int x509_main(int argc, char **argv)
         if (!do_X509_sign(x, privkey, digest, sigopts, &ext_ctx))
             goto end;
     } else if (CAfile != NULL) {
-        if (!reqfile && !newcert) { /* certificate should be self-signed */
-            X509_STORE_CTX *xsc = X509_STORE_CTX_new();
-
-            if (xsc == NULL || !X509_STORE_CTX_init(xsc, ctx, x, NULL)) {
-                BIO_printf(bio_err, "Error initialising X509 store\n");
-                X509_STORE_CTX_free(xsc);
-                goto end;
-            }
-            X509_STORE_CTX_set_cert(xsc, x);
-            X509_STORE_CTX_set_flags(xsc, X509_V_FLAG_CHECK_SS_SIGNATURE);
-            i = X509_verify_cert(xsc);
-            X509_STORE_CTX_free(xsc);
-            if (i <= 0)
-                goto end;
-        }
         if ((CAkey = load_key(CAkeyfile, CAkeyformat,
                               0, passin, e, "CA private key")) == NULL)
             goto end;
@@ -947,7 +964,7 @@ int x509_main(int argc, char **argv)
                 purpose_print(out, x, X509_PURPOSE_get0(j));
         } else if (i == modulus) {
             BIO_printf(out, "Modulus=");
-            if (EVP_PKEY_is_a(pkey, "RSA")) {
+            if (EVP_PKEY_is_a(pkey, "RSA") || EVP_PKEY_is_a(pkey, "RSA-PSS")) {
                 BIGNUM *n = NULL;
 
                 /* Every RSA key has an 'n' */
@@ -1074,6 +1091,7 @@ static ASN1_INTEGER *x509_load_serial(const char *CAfile,
     char *buf = NULL;
     ASN1_INTEGER *bs = NULL;
     BIGNUM *serial = NULL;
+    int defaultfile = 0, file_exists;
 
     if (serialfile == NULL) {
         const char *p = strrchr(CAfile, '.');
@@ -1083,9 +1101,10 @@ static ASN1_INTEGER *x509_load_serial(const char *CAfile,
         memcpy(buf, CAfile, len);
         memcpy(buf + len, POSTFIX, sizeof(POSTFIX));
         serialfile = buf;
+        defaultfile = 1;
     }
 
-    serial = load_serial(serialfile, create, NULL);
+    serial = load_serial(serialfile, &file_exists, create || defaultfile, NULL);
     if (serial == NULL)
         goto end;
 
@@ -1094,8 +1113,10 @@ static ASN1_INTEGER *x509_load_serial(const char *CAfile,
         goto end;
     }
 
-    if (!save_serial(serialfile, NULL, serial, &bs))
-        goto end;
+    if (file_exists || create)
+        save_serial(serialfile, NULL, serial, &bs);
+    else
+        bs = BN_to_ASN1_INTEGER(serial, NULL);
 
  end:
     OPENSSL_free(buf);

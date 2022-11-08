@@ -66,12 +66,11 @@ I<wbio>), and the maximum expected response header line length I<buf_size>.
 A value <= 0 indicates that
 the B<OSSL_HTTP_DEFAULT_MAX_LINE_LEN> of 4KiB should be used.
 I<buf_size> is also used as the number of content bytes that are read at a time.
-The allocated context structure is also populated with an internal allocated
-memory B<BIO>, which collects the HTTP request and additional headers as text.
+The allocated context structure includes an internal memory B<BIO>,
+which collects the HTTP request header lines.
 
 OSSL_HTTP_REQ_CTX_free() frees up the HTTP request context I<rctx>.
-The I<wbio> and I<rbio> are not free'd and it is up to the application
-to do so.
+The I<rbio> is not free'd, I<wbio> will be free'd if I<free_wbio> is set.
 
 OSSL_HTTP_REQ_CTX_set_request_line() adds the HTTP request line to the context.
 The HTTP method is determined by I<method_POST>,
@@ -81,7 +80,7 @@ that the request should go through, otherwise they should be left NULL.
 I<path> is the HTTP request path; if left NULL, C</> is used.
 
 OSSL_HTTP_REQ_CTX_add1_header() adds header I<name> with value I<value> to the
-context I<rctx>. It can be called more than once to add multiple headers.
+context I<rctx>. It can be called more than once to add multiple header lines.
 For example, to add a C<Host> header for C<example.com> you would call:
 
  OSSL_HTTP_REQ_CTX_add1_header(ctx, "Host", "example.com");
@@ -97,7 +96,7 @@ If the I<asn1> parameter is nonzero a structure in ASN.1 encoding will be
 expected as the response content and input streaming is disabled.  This means
 that an ASN.1 sequence header is required, its length field is checked, and
 OSSL_HTTP_REQ_CTX_get0_mem_bio() should be used to get the buffered response.
-Otherwise any input format is allowed without length checks, which is the default.
+Otherwise (by default) any input format is allowed without length checks.
 In this case the BIO given as I<rbio> argument to OSSL_HTTP_REQ_CTX_new() should
 be used directly to read the response contents, which may support streaming.
 If the I<timeout> parameter is > 0 this indicates the maximum number of seconds
@@ -125,7 +124,7 @@ The HTTP header C<Content-Length> is filled out with the length of the request.
 I<content_type> must be NULL if I<req> is NULL.
 If I<content_type> isn't NULL,
 the HTTP header C<Content-Type> is also added with the given string value.
-All of this ends up in the internal memory B<BIO>.
+The header lines are added to the internal memory B<BIO> for the request header.
 
 OSSL_HTTP_REQ_CTX_nbio() attempts to send the request prepared in I<rctx>
 and to gather the response via HTTP, using the I<wbio> and I<rbio>
@@ -140,20 +139,23 @@ using the ASN.1 template I<it> and places the result in I<*pval>.
 
 OSSL_HTTP_REQ_CTX_exchange() calls OSSL_HTTP_REQ_CTX_nbio() as often as needed
 in order to exchange a request and response or until a timeout is reached.
-If successful and an ASN.1-encoded response was expected, the response contents
-should be read via the BIO returned by OSSL_HTTP_REQ_CTX_get0_mem_bio().
-Else the I<rbio> that was given when calling OSSL_HTTP_REQ_CTX_new()
-represents the current state of reading the response.
-If OSSL_HTTP_REQ_CTX_exchange() was successful, this BIO has been read past the
-end of the response headers, such that the actual response contents can be read
-via this BIO, which may support streaming.
+On success it returns a pointer to the BIO that can be used to read the result.
+If an ASN.1-encoded response was expected, this is the BIO
+returned by OSSL_HTTP_REQ_CTX_get0_mem_bio() when called after the exchange.
+This memory BIO does not support streaming.
+Otherwise the returned BIO is the I<rbio> given to OSSL_HTTP_REQ_CTX_new(),
+which may support streaming.
+When this BIO is returned, it has been read past the end of the response header,
+such that the actual response body can be read from it.
+The returned BIO pointer MUST NOT be freed by the caller.
 
 OSSL_HTTP_REQ_CTX_get0_mem_bio() returns the internal memory B<BIO>.
-Before sending the request, this could used to modify the HTTP request text.
+Before the HTTP request is sent, this could be used to adapt its header lines.
 I<Use with caution!>
 After receiving a response via HTTP, the BIO represents the current state of
-reading the response headers. If the response was expected to be ASN.1 encoded,
+reading the response header. If the response was expected to be ASN.1 encoded,
 its contents can be read via this BIO, which does not support streaming.
+The returned BIO pointer must not be freed by the caller.
 
 OSSL_HTTP_REQ_CTX_get_resp_len() returns the size of the response contents
 in I<rctx> if provided by the server as <Content-Length> header field, else 0.
@@ -198,7 +200,7 @@ Calling OSSL_HTTP_REQ_CTX_set_request_line().
 
 =item 2.
 
-Adding extra headers with OSSL_HTTP_REQ_CTX_add1_header().
+Adding extra header lines with OSSL_HTTP_REQ_CTX_add1_header().
 This is optional and may be done multiple times with different names.
 
 =item 3.
@@ -227,7 +229,8 @@ OSSL_HTTP_REQ_CTX_nbio() and OSSL_HTTP_REQ_CTX_nbio_d2i()
 return 1 for success, 0 on error or redirection, -1 if retry is needed.
 
 OSSL_HTTP_REQ_CTX_exchange() and OSSL_HTTP_REQ_CTX_get0_mem_bio()
-return a pointer to a B<BIO> on success and NULL on failure.
+return a pointer to a B<BIO> on success as described above or NULL on failure.
+The returned BIO must not be freed by the caller.
 
 OSSL_HTTP_REQ_CTX_get_resp_len() returns the size of the response contents
 or 0 if not available or an error occurred.
@@ -253,7 +256,7 @@ The functions described here were added in OpenSSL 3.0.
 
 =head1 COPYRIGHT
 
-Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
+Copyright 2015-2022 The OpenSSL Project Authors. All Rights Reserved.
 
 Licensed under the Apache License 2.0 (the "License").  You may not use
 this file except in compliance with the License.  You can obtain a copy

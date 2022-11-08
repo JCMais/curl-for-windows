@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <openssl/crypto.h>
+#include "internal/numbers.h"
 #include "bio_local.h"
 
 /*
@@ -140,7 +141,7 @@ int BIO_free(BIO *a)
     if (HAS_CALLBACK(a)) {
         ret = (int)bio_call_callback(a, BIO_CB_FREE, NULL, 0, 0, 0L, 1L, NULL);
         if (ret <= 0)
-            return ret;
+            return 0;
     }
 
     if ((a->method != NULL) && (a->method->destroy != NULL))
@@ -563,10 +564,8 @@ long BIO_ctrl(BIO *b, int cmd, long larg, void *parg)
 {
     long ret;
 
-    if (b == NULL) {
-        ERR_raise(ERR_LIB_BIO, ERR_R_PASSED_NULL_PARAMETER);
+    if (b == NULL)
         return -1;
-    }
     if (b->method == NULL || b->method->ctrl == NULL) {
         ERR_raise(ERR_LIB_BIO, BIO_R_UNSUPPORTED_METHOD);
         return -2;
@@ -591,10 +590,8 @@ long BIO_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
 {
     long ret;
 
-    if (b == NULL) {
-        ERR_raise(ERR_LIB_BIO, ERR_R_PASSED_NULL_PARAMETER);
+    if (b == NULL)
         return -2;
-    }
     if (b->method == NULL || b->method->callback_ctrl == NULL
             || cmd != BIO_CTRL_SET_CALLBACK) {
         ERR_raise(ERR_LIB_BIO, BIO_R_UNSUPPORTED_METHOD);
@@ -624,12 +621,28 @@ long BIO_callback_ctrl(BIO *b, int cmd, BIO_info_cb *fp)
  */
 size_t BIO_ctrl_pending(BIO *bio)
 {
-    return BIO_ctrl(bio, BIO_CTRL_PENDING, 0, NULL);
+    long ret = BIO_ctrl(bio, BIO_CTRL_PENDING, 0, NULL);
+
+    if (ret < 0)
+        ret = 0;
+#if LONG_MAX > SIZE_MAX
+    if (ret > SIZE_MAX)
+        ret = SIZE_MAX;
+#endif
+    return (size_t)ret;
 }
 
 size_t BIO_ctrl_wpending(BIO *bio)
 {
-    return BIO_ctrl(bio, BIO_CTRL_WPENDING, 0, NULL);
+    long ret = BIO_ctrl(bio, BIO_CTRL_WPENDING, 0, NULL);
+
+    if (ret < 0)
+        ret = 0;
+#if LONG_MAX > SIZE_MAX
+    if (ret > SIZE_MAX)
+        ret = SIZE_MAX;
+#endif
+    return (size_t)ret;
 }
 
 /* put the 'bio' on the end of b's list of operators */
@@ -655,10 +668,8 @@ BIO *BIO_pop(BIO *b)
 {
     BIO *ret;
 
-    if (b == NULL) {
-        ERR_raise(ERR_LIB_BIO, ERR_R_PASSED_NULL_PARAMETER);
+    if (b == NULL)
         return NULL;
-    }
     ret = b->next_bio;
 
     BIO_ctrl(b, BIO_CTRL_POP, 0, b);
@@ -728,10 +739,8 @@ BIO *BIO_find_type(BIO *bio, int type)
 
 BIO *BIO_next(BIO *b)
 {
-    if (b == NULL) {
-        ERR_raise(ERR_LIB_BIO, ERR_R_PASSED_NULL_PARAMETER);
+    if (b == NULL)
         return NULL;
-    }
     return b->next_bio;
 }
 

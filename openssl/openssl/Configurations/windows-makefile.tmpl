@@ -41,6 +41,7 @@ BLDDIR={- $config{builddir} -}
 FIPSKEY={- $config{FIPSKEY} -}
 
 VERSION={- "$config{full_version}" -}
+VERSION_NUMBER={- "$config{version}" -}
 MAJOR={- $config{major} -}
 MINOR={- $config{minor} -}
 
@@ -461,10 +462,10 @@ libclean:
 	-del /Q /F $(LIBS) libcrypto.* libssl.* ossl_static.pdb
 
 clean: libclean
-	-rd /Q /S $(HTMLDOCS1_BLDDIRS)
-	-rd /Q /S $(HTMLDOCS3_BLDDIRS)
-	-rd /Q /S $(HTMLDOCS5_BLDDIRS)
-	-rd /Q /S $(HTMLDOCS7_BLDDIRS)
+	{- join("\n\t", map { "-del /Q /F $_" } @HTMLDOCS1) || "\@rem" -}
+	{- join("\n\t", map { "-del /Q /F $_" } @HTMLDOCS3) || "\@rem" -}
+	{- join("\n\t", map { "-del /Q /F $_" } @HTMLDOCS5) || "\@rem" -}
+	{- join("\n\t", map { "-del /Q /F $_" } @HTMLDOCS7) || "\@rem" -}
 	{- join("\n\t", map { "-del /Q /F $_" } @PROGRAMS) || "\@rem" -}
 	{- join("\n\t", map { "-del /Q /F $_" } @MODULES) || "\@rem" -}
 	{- join("\n\t", map { "-del /Q /F $_" } @SCRIPTS) || "\@rem" -}
@@ -477,10 +478,11 @@ clean: libclean
 	-rd /Q /S test\test-runs
 
 distclean: clean
+	-del /Q /F include\openssl\configuration.h
 	-del /Q /F configdata.pm
 	-del /Q /F makefile
 
-depend:
+depend: makefile
 	@ {- output_off() if $disabled{makedepend}; "\@rem" -}
 	@ "$(PERL)" "$(SRCDIR)\util\add-depends.pl" "{- $target{makedep_scheme} -}"
 	@ {- output_on() if $disabled{makedepend}; "\@rem" -}
@@ -498,7 +500,8 @@ uninstall_docs: uninstall_html_docs
 {- output_off() if $disabled{fips}; "" -}
 install_fips: build_sw $(INSTALL_FIPSMODULECONF)
 #	@[ -n "$(INSTALLTOP)" ] || (echo INSTALLTOP should not be empty; exit 1)
-	@$(PERL) $(SRCDIR)\util\mkdir-p.pl $(MODULESDIR)
+	@"$(PERL)" "$(SRCDIR)\util\mkdir-p.pl" "$(MODULESDIR)"
+	@"$(PERL)" "$(SRCDIR)\util\mkdir-p.pl" "$(OPENSSLDIR)"
 	@$(ECHO) "*** Installing FIPS module"
 	@$(ECHO) "install $(INSTALL_FIPSMODULE) -> $(MODULESDIR)\$(FIPSMODULENAME)"
 	@"$(PERL)" "$(SRCDIR)\util\copy.pl" "$(INSTALL_FIPSMODULE)" "$(MODULESDIR)"
@@ -541,10 +544,10 @@ install_dev: install_runtime_libs
 	@if "$(INSTALLTOP)"=="" ( $(ECHO) "INSTALLTOP should not be empty" & exit 1 )
 	@$(ECHO) "*** Installing development files"
 	@"$(PERL)" "$(SRCDIR)\util\mkdir-p.pl" "$(INSTALLTOP)\include\openssl"
-	@{- output_off() unless grep { $_ eq "OPENSSL_USE_APPLINK" } (@{$target{defines}}, @{$config{defines}}); "" -}
+	@{- output_off() if $disabled{uplink}; "" -}
 	@"$(PERL)" "$(SRCDIR)\util\copy.pl" "$(SRCDIR)\ms\applink.c" \
 				       "$(INSTALLTOP)\include\openssl"
-	@{- output_on() unless grep { $_ eq "OPENSSL_USE_APPLINK" } (@{$target{defines}}, @{$config{defines}}); "" -}
+	@{- output_on() if $disabled{uplink}; "" -}
 	@"$(PERL)" "$(SRCDIR)\util\copy.pl" "-exclude_re=/__DECC_" \
 				       "$(SRCDIR)\include\openssl\*.h" \
 				       "$(INSTALLTOP)\include\openssl"
@@ -641,13 +644,23 @@ uninstall_image_docs:
 
 copy-utils: $(BLDDIR)\apps\openssl.cnf
 
-$(BLDDIR)\apps\openssl.cnf: configdata.pm
+$(BLDDIR)\apps\openssl.cnf: makefile
 	@if NOT EXIST "$(BLDDIR)\apps" mkdir "$(BLDDIR)\apps"
 	@if NOT "$(SRCDIR)"=="$(BLDDIR)" copy "$(SRCDIR)\apps\$(@F)" "$(BLDDIR)\apps"
 
 # Building targets ###################################################
 
-configdata.pm: "$(SRCDIR)\Configure" {- join(" ", map { '"'.$_.'"' } @{$config{build_file_templates}}, @{$config{build_infos}}, @{$config{conf_files}}) -}
+makefile: configdata.pm {- join(" ", map { '"'.$_.'"' } @{$config{build_file_templates}}) -}
+	@$(ECHO) "Detected changed: $?"
+	"$(PERL)" configdata.pm
+	@$(ECHO) "**************************************************"
+	@$(ECHO) "***                                            ***"
+	@$(ECHO) "***   Please run the same make command again   ***"
+	@$(ECHO) "***                                            ***"
+	@$(ECHO) "**************************************************"
+	@exit 1
+
+configdata.pm: "$(SRCDIR)\Configure" {- join(" ", map { '"'.$_.'"' } @{$config{build_infos}}, @{$config{conf_files}}) -}
 	@$(ECHO) "Detected changed: $?"
 	"$(PERL)" configdata.pm -r
 	@$(ECHO) "**************************************************"
@@ -727,12 +740,12 @@ EOF
           my $mkdef = abs2rel(rel2abs(catfile($config{sourcedir},
                                               "util", "mkdef.pl")),
                               rel2abs($config{builddir}));
-          my $ord_ver = $args{intent} eq 'lib' ? ' --version $(VERSION)' : '';
+          my $ord_ver = $args{intent} eq 'lib' ? ' --version $(VERSION_NUMBER)' : '';
           my $ord_name =
-              $args{generator}->[1] || platform->dsoname($args{product});
+              $args{generator}->[1] || basename(platform->dsoname($args{product}));
           return <<"EOF";
 $target: $gen0 $deps $mkdef
-	"\$(PERL)" $mkdef$ord_ver --ordinals $gen0 --name $ord_name --OS windows > $target
+	"\$(PERL)" "$mkdef"$ord_ver --type $args{intent} --ordinals $gen0 --name $ord_name --OS windows > $target
 EOF
       } elsif (platform->isasm($args{src})) {
           #
@@ -748,7 +761,7 @@ EOF
 
           my $generator;
           if ($gen0 =~ /\.pl$/) {
-              $generator = '"$(PERL)"'.$gen_incs.' '.$gen0.$gen_args
+              $generator = '"$(PERL)"'.$gen_incs.' "'.$gen0.'"'.$gen_args
                   .' "$(PERLASM_SCHEME)"'.$incs.' '.$cppflags.$defs.' $(PROCESSSOR)';
           } elsif ($gen0 =~ /\.S$/) {
               $generator = undef;
@@ -805,7 +818,7 @@ EOF
           $gen0 = platform->bin($gen0);
           return <<"EOF";
 $args{src}: $gen0 $deps "\$(BLDDIR)\\util\\wrap.pl"
-	"\$(PERL)" "\$(BLDDIR)\\util\\wrap.pl" $gen0$gen_args > \$@
+	"\$(PERL)" "\$(BLDDIR)\\util\\wrap.pl" "$gen0"$gen_args > \$@
 EOF
       } else {
           #
@@ -813,7 +826,7 @@ EOF
           #
           return <<"EOF";
 $args{src}: "$gen0" $deps
-	"\$(PERL)"$gen_incs $gen0$gen_args > \$@
+	"\$(PERL)"$gen_incs "$gen0"$gen_args > \$@
 EOF
       }
   }
@@ -981,6 +994,7 @@ EOF
                 @{$args{objs}};
      my @deps = compute_lib_depends(@{$args{deps}});
      my $objs = join($target{ld_resp_delim}, @objs);
+     my $ress = join($target{ld_resp_delim}, @ress);
      my $linklibs = join("", map { "$_$target{ld_resp_delim}" } @deps);
      my $deps = join(" ", @objs, @ress, @deps);
      return <<"EOF";

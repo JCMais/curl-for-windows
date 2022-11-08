@@ -7,21 +7,17 @@
     'conditions': [
       ['OS == "win"', {
         'obj_dir_abs': '<(PRODUCT_DIR)/obj',
-        'openssl_dir': '<(PRODUCT_DIR)/obj/lib',
       }],
       ['GENERATOR == "ninja"', {
         'obj_dir_abs': '<(PRODUCT_DIR)/obj',
         'modules_dir': '<(PRODUCT_DIR)/obj/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR)/obj/lib',
       }, {
         'obj_dir_abs%': '<(PRODUCT_DIR)/obj.target',
         'modules_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl',
       }],
       ['OS=="mac"', {
         'obj_dir_abs%': '<(PRODUCT_DIR)/obj.target',
         'modules_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules',
-        'openssl_dir': '<(PRODUCT_DIR)/obj.target/deps/openssl',
       }],
     ],
   },
@@ -57,7 +53,6 @@
         ['node_shared_openssl=="false"', {
           'defines': [
             'MODULESDIR="<(modules_dir)"',
-            'OPENSSLDIR="<(openssl_dir)"',
           ]
         }],
       ],

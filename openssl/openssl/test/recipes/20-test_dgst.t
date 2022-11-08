@@ -1,5 +1,5 @@
 #! /usr/bin/env perl
-# Copyright 2017-2021 The OpenSSL Project Authors. All Rights Reserved.
+# Copyright 2017-2022 The OpenSSL Project Authors. All Rights Reserved.
 #
 # Licensed under the Apache License 2.0 (the "License").  You may not use
 # this file except in compliance with the License.  You can obtain a copy
@@ -12,12 +12,12 @@ use warnings;
 
 use File::Spec;
 use File::Basename;
-use OpenSSL::Test qw/:DEFAULT with srctop_file/;
+use OpenSSL::Test qw/:DEFAULT with srctop_file bldtop_dir/;
 use OpenSSL::Test::Utils;
 
 setup("test_dgst");
 
-plan tests => 9;
+plan tests => 12;
 
 sub tsignverify {
     my $testtext = shift;
@@ -103,6 +103,25 @@ SKIP: {
     };
 }
 
+SKIP: {
+    skip "dgst with engine is not supported by this OpenSSL build", 1
+        if disabled("engine") || disabled("dynamic-engine");
+
+    subtest "SHA1 generation by engine with `dgst` CLI" => sub {
+        plan tests => 1;
+
+        my $testdata = srctop_file('test', 'data.bin');
+        # intentionally using -engine twice, please do not remove the duplicate line
+        my @macdata = run(app(['openssl', 'dgst', '-sha1',
+                               '-engine', "ossltest",
+                               '-engine', "ossltest",
+                               $testdata]), capture => 1);
+        chomp(@macdata);
+        my $expected = qr/SHA1\(\Q$testdata\E\)= 000102030405060708090a0b0c0d0e0f10111213/;
+        ok($macdata[0] =~ $expected, "SHA1: Check HASH value is as expected ($macdata[0]) vs ($expected)");
+    }
+}
+
 subtest "HMAC generation with `dgst` CLI" => sub {
     plan tests => 2;
 
@@ -159,3 +178,29 @@ subtest "Custom length XOF digest generation with `dgst` CLI" => sub {
     ok($xofdata[1] =~ $expected,
        "XOF: Check second digest value is consistent with the first ($xofdata[1]) vs ($expected)");
 };
+
+subtest "SHAKE digest generation with no xoflen set `dgst` CLI" => sub {
+    plan tests => 1;
+
+    my $testdata = srctop_file('test', 'data.bin');
+    my @xofdata = run(app(['openssl', 'dgst', '-shake128', $testdata], stderr => "outerr.txt"), capture => 1);
+    chomp(@xofdata);
+    my $expected = qr/SHAKE-128\(\Q$testdata\E\)= bb565dac72640109e1c926ef441d3fa6/;
+    ok($xofdata[0] =~ $expected, "Check short digest is output");
+};
+
+SKIP: {
+    skip "ECDSA is not supported by this OpenSSL build", 1
+        if disabled("ec");
+
+    subtest "signing with xoflen is not supported `dgst` CLI" => sub {
+        plan tests => 1;
+        my $data_to_sign = srctop_file('test', 'data.bin');
+
+        ok(!run(app(['openssl', 'dgst', '-shake256', '-xoflen', '64',
+                     '-sign', srctop_file("test","testec-p256.pem"),
+                     '-out', 'test.sig',
+                     srctop_file('test', 'data.bin')])),
+                     "Generating signature with xoflen should fail");
+    }
+}

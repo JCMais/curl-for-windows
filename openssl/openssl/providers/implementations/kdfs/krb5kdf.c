@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2018-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -98,6 +98,7 @@ static int krb5kdf_set_membuf(unsigned char **dst, size_t *dst_len,
 {
     OPENSSL_clear_free(*dst, *dst_len);
     *dst = NULL;
+    *dst_len = 0;
     return OSSL_PARAM_get_octet_string(p, (void **)dst, 0, dst_len);
 }
 
@@ -335,8 +336,10 @@ static int cipher_init(EVP_CIPHER_CTX *ctx,
     klen = EVP_CIPHER_CTX_get_key_length(ctx);
     if (key_len != (size_t)klen) {
         ret = EVP_CIPHER_CTX_set_key_length(ctx, key_len);
-        if (!ret)
+        if (ret <= 0) {
+            ret = 0;
             goto out;
+        }
     }
     /* we never want padding, either the length requested is a multiple of
      * the cipher block size or we are passed a cipher that can cope with

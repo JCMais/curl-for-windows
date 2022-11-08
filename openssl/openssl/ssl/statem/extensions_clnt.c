@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -679,6 +679,10 @@ EXT_RETURN tls_construct_ctos_key_share(SSL *s, WPACKET *pkt,
             if (!tls_group_allowed(s, pgroups[i], SSL_SECOP_CURVE_SUPPORTED))
                 continue;
 
+            if (!tls_valid_group(s, pgroups[i], TLS1_3_VERSION, TLS1_3_VERSION,
+                                 0, NULL))
+                continue;
+
             curve_id = pgroups[i];
             break;
         }
@@ -974,7 +978,7 @@ EXT_RETURN tls_construct_ctos_psk(SSL *s, WPACKET *pkt, unsigned int context,
                                   X509 *x, size_t chainidx)
 {
 #ifndef OPENSSL_NO_TLS1_3
-    uint32_t now, agesec, agems = 0;
+    uint32_t agesec, agems = 0;
     size_t reshashsize = 0, pskhashsize = 0, binderoffset, msglen;
     unsigned char *resbinder = NULL, *pskbinder = NULL, *msgstart = NULL;
     const EVP_MD *handmd = NULL, *mdres = NULL, *mdpsk = NULL;
@@ -1030,8 +1034,7 @@ EXT_RETURN tls_construct_ctos_psk(SSL *s, WPACKET *pkt, unsigned int context,
          * this in multiple places in the code, so portability shouldn't be an
          * issue.
          */
-        now = (uint32_t)time(NULL);
-        agesec = now - (uint32_t)s->session->time;
+        agesec = (uint32_t)(time(NULL) - s->session->time);
         /*
          * We calculate the age in seconds but the server may work in ms. Due to
          * rounding errors we could overestimate the age by up to 1s. It is
@@ -1718,7 +1721,11 @@ int tls_parse_stoc_etm(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
     /* Ignore if inappropriate ciphersuite */
     if (!(s->options & SSL_OP_NO_ENCRYPT_THEN_MAC)
             && s->s3.tmp.new_cipher->algorithm_mac != SSL_AEAD
-            && s->s3.tmp.new_cipher->algorithm_enc != SSL_RC4)
+            && s->s3.tmp.new_cipher->algorithm_enc != SSL_RC4
+            && s->s3.tmp.new_cipher->algorithm_enc != SSL_eGOST2814789CNT
+            && s->s3.tmp.new_cipher->algorithm_enc != SSL_eGOST2814789CNT12
+            && s->s3.tmp.new_cipher->algorithm_enc != SSL_MAGMA
+            && s->s3.tmp.new_cipher->algorithm_enc != SSL_KUZNYECHIK)
         s->ext.use_etm = 1;
 
     return 1;
@@ -1812,7 +1819,9 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
                 break;
         }
         if (i >= num_groups
-                || !tls_group_allowed(s, group_id, SSL_SECOP_CURVE_SUPPORTED)) {
+                || !tls_group_allowed(s, group_id, SSL_SECOP_CURVE_SUPPORTED)
+                || !tls_valid_group(s, group_id, TLS1_3_VERSION, TLS1_3_VERSION,
+                                    0, NULL)) {
             SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_BAD_KEY_SHARE);
             return 0;
         }
@@ -1870,11 +1879,12 @@ int tls_parse_stoc_key_share(SSL *s, PACKET *pkt, unsigned int context, X509 *x,
         skey = EVP_PKEY_new();
         if (skey == NULL || EVP_PKEY_copy_parameters(skey, ckey) <= 0) {
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_COPY_PARAMETERS_FAILED);
+            EVP_PKEY_free(skey);
             return 0;
         }
 
-        if (EVP_PKEY_set1_encoded_public_key(skey, PACKET_data(&encoded_pt),
-                                             PACKET_remaining(&encoded_pt)) <= 0) {
+        if (tls13_set_encoded_pub_key(skey, PACKET_data(&encoded_pt),
+                                      PACKET_remaining(&encoded_pt)) <= 0) {
             SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_BAD_ECPOINT);
             EVP_PKEY_free(skey);
             return 0;

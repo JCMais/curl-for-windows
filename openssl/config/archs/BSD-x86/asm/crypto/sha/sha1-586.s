@@ -4,7 +4,11 @@
 .align	4
 _sha1_block_data_order:
 L_sha1_block_data_order_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -1399,7 +1403,11 @@ L002loop:
 .type	__sha1_block_data_order_shaext,@function
 .align	4
 __sha1_block_data_order_shaext:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -1569,7 +1577,11 @@ L004loop_shaext:
 .type	__sha1_block_data_order_ssse3,@function
 .align	4
 __sha1_block_data_order_ssse3:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -2788,7 +2800,11 @@ L007done:
 .type	__sha1_block_data_order_avx,@function
 .align	4
 __sha1_block_data_order_avx:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi

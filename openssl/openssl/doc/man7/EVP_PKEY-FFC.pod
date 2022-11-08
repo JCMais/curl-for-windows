@@ -92,7 +92,7 @@ of I<p>. This value must be saved if domain parameter validation is required.
 
 =item "hindex" (B<OSSL_PKEY_PARAM_FFC_H>) <integer>
 
-For unverifiable generation of the generator I<g> this value is output during 
+For unverifiable generation of the generator I<g> this value is output during
 generation of I<g>. Its value is the first integer larger than one that
 satisfies g = h^j mod p (where g != 1 and "j" is the cofactor).
 
@@ -196,7 +196,7 @@ The following sections of SP800-56Ar3:
 
 =back
 
-The following sections of FIPS 186-4:
+The following sections of FIPS186-4:
 
 =over 4
 
@@ -222,7 +222,7 @@ L<OSSL_PROVIDER-FIPS(7)>,
 
 =head1 COPYRIGHT
 
-Copyright 2020-2021 The OpenSSL Project Authors. All Rights Reserved.
+Copyright 2020-2022 The OpenSSL Project Authors. All Rights Reserved.
 
 Licensed under the Apache License 2.0 (the "License").  You may not use
 this file except in compliance with the License.  You can obtain a copy

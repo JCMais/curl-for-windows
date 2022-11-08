@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2020-2022 The OpenSSL Project Authors. All Rights Reserved.
  * Copyright (c) 2020, Intel Corporation. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
@@ -14,6 +14,7 @@
  */
 
 #include <openssl/opensslconf.h>
+#include <openssl/crypto.h>
 #include "rsaz_exp.h"
 
 #ifndef RSAZ_ENABLED
@@ -30,6 +31,14 @@ NON_EMPTY_TRANSLATION_UNIT
 #  define ALIGN64
 # endif
 
+# if defined(__GNUC__)
+#  define ALIGN1  __attribute__((aligned(1)))
+# elif defined(_MSC_VER)
+#  define ALIGN1  __declspec(align(1))
+# else
+#  define ALIGN1
+# endif
+
 # define ALIGN_OF(ptr, boundary) \
     ((unsigned char *)(ptr) + (boundary - (((size_t)(ptr)) & (boundary - 1))))
 
@@ -40,6 +49,8 @@ NON_EMPTY_TRANSLATION_UNIT
 
 # define BITS2WORD8_SIZE(x)  (((x) + 7) >> 3)
 # define BITS2WORD64_SIZE(x) (((x) + 63) >> 6)
+
+typedef uint64_t ALIGN1 uint64_t_align1;
 
 static ossl_inline uint64_t get_digit52(const uint8_t *in, int in_len);
 static ossl_inline void put_digit52(uint8_t *out, int out_len, uint64_t digit);
@@ -219,6 +230,12 @@ int ossl_rsaz_mod_exp_avx512_x2(BN_ULONG *res1,
     from_words52(res1, factor_size, rr1_red);
     from_words52(res2, factor_size, rr2_red);
 
+    /* bn_reduce_once_in_place expects number of BN_ULONG, not bit size */
+    factor_size /= sizeof(BN_ULONG) * 8;
+
+    bn_reduce_once_in_place(res1, /*carry=*/0, m1, storage, factor_size);
+    bn_reduce_once_in_place(res2, /*carry=*/0, m2, storage, factor_size);
+
     ret = 1;
 err:
     if (storage != NULL) {
@@ -310,17 +327,28 @@ static void RSAZ_exp52x20_x2_256(BN_ULONG *out,          /* [2][20] */
 
     /* Exponentiation */
     {
-        int rem = BITSIZE_MODULUS % EXP_WIN_SIZE;
-        int delta = rem ? rem : EXP_WIN_SIZE;
+        const int rem = BITSIZE_MODULUS % EXP_WIN_SIZE;
         BN_ULONG table_idx_mask = EXP_WIN_MASK;
 
-        int exp_bit_no = BITSIZE_MODULUS - delta;
+        int exp_bit_no = BITSIZE_MODULUS - rem;
         int exp_chunk_no = exp_bit_no / 64;
         int exp_chunk_shift = exp_bit_no % 64;
 
+        BN_ULONG red_table_idx_0, red_table_idx_1;
+
+        /*
+         * If rem == 0, then
+         *      exp_bit_no = modulus_bitsize - exp_win_size
+         * However, this isn't possible because rem is { 1024, 1536, 2048 } % 5
+         * which is { 4, 1, 3 } respectively.
+         *
+         * If this assertion ever fails the fix above is easy.
+         */
+        OPENSSL_assert(rem != 0);
+
         /* Process 1-st exp window - just init result */
-        BN_ULONG red_table_idx_0 = expz[0][exp_chunk_no];
-        BN_ULONG red_table_idx_1 = expz[1][exp_chunk_no];
+        red_table_idx_0 = expz[0][exp_chunk_no];
+        red_table_idx_1 = expz[1][exp_chunk_no];
         /*
          * The function operates with fixed moduli sizes divisible by 64,
          * thus table index here is always in supported range [0, EXP_WIN_SIZE).
@@ -450,9 +478,9 @@ static void to_words52(BN_ULONG *out, int out_len,
     in_str = (uint8_t *)in;
 
     for (; in_bitsize >= (2 * DIGIT_SIZE); in_bitsize -= (2 * DIGIT_SIZE), out += 2) {
-        out[0] = (*(uint64_t *)in_str) & DIGIT_MASK;
+        out[0] = (*(uint64_t_align1 *)in_str) & DIGIT_MASK;
         in_str += 6;
-        out[1] = ((*(uint64_t *)in_str) >> 4) & DIGIT_MASK;
+        out[1] = ((*(uint64_t_align1 *)in_str) >> 4) & DIGIT_MASK;
         in_str += 7;
         out_len -= 2;
     }
@@ -509,9 +537,9 @@ static void from_words52(BN_ULONG *out, int out_bitsize, const BN_ULONG *in)
         uint8_t *out_str = (uint8_t *)out;
 
         for (; out_bitsize >= (2 * DIGIT_SIZE); out_bitsize -= (2 * DIGIT_SIZE), in += 2) {
-            (*(uint64_t *)out_str) = in[0];
+            (*(uint64_t_align1 *)out_str) = in[0];
             out_str += 6;
-            (*(uint64_t *)out_str) ^= in[1] << 4;
+            (*(uint64_t_align1 *)out_str) ^= in[1] << 4;
             out_str += 7;
         }
 

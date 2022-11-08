@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2006-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -118,7 +118,7 @@ static int dh_cms_set_shared_info(EVP_PKEY_CTX *pctx, CMS_RecipientInfo *ri)
     if (kekctx == NULL)
         goto err;
 
-    if (!OBJ_obj2txt(name, sizeof(name), kekalg->algorithm, 0))
+    if (OBJ_obj2txt(name, sizeof(name), kekalg->algorithm, 0) <= 0)
         goto err;
 
     kekcipher = EVP_CIPHER_fetch(pctx->libctx, name, pctx->propquery);
@@ -244,7 +244,7 @@ static int dh_cms_encrypt(CMS_RecipientInfo *ri)
 
     /* See if custom parameters set */
     kdf_type = EVP_PKEY_CTX_get_dh_kdf_type(pctx);
-    if (kdf_type <= 0 || !EVP_PKEY_CTX_get_dh_kdf_md(pctx, &kdf_md))
+    if (kdf_type <= 0 || EVP_PKEY_CTX_get_dh_kdf_md(pctx, &kdf_md) <= 0)
         goto err;
 
     if (kdf_type == EVP_PKEY_DH_KDF_NONE) {

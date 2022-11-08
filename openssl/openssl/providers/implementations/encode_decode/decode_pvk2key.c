@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2020-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -88,6 +88,9 @@ static int pvk2key_decode(void *vctx, OSSL_CORE_BIO *cin, int selection,
     void *key = NULL;
     int ok = 0;
 
+    if (in == NULL)
+        return 0;
+
     ctx->selection = selection;
 
     if ((selection == 0
@@ -100,7 +103,7 @@ static int pvk2key_decode(void *vctx, OSSL_CORE_BIO *cin, int selection,
         if (!ossl_pw_set_ossl_passphrase_cb(&pwdata, pw_cb, pw_cbarg))
             goto end;
 
-        key = ctx->desc->read_private_key(in, ossl_pw_pem_password, &pwdata,
+        key = ctx->desc->read_private_key(in, ossl_pw_pvk_password, &pwdata,
                                           PROV_LIBCTX_OF(ctx->provctx), NULL);
 
         /*

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2015-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -334,8 +334,13 @@ static int state_machine(SSL *s, int server)
          * If we are stateless then we already called SSL_clear() - don't do
          * it again and clear the STATELESS flag itself.
          */
+#ifndef OPENSSL_NO_QUIC
+        if ((s->s3.flags & TLS1_FLAGS_STATELESS) == 0 && !SSL_clear_not_quic(s))
+            return -1;
+#else
         if ((s->s3.flags & TLS1_FLAGS_STATELESS) == 0 && !SSL_clear(s))
             return -1;
+#endif
     }
 #ifndef OPENSSL_NO_SCTP
     if (SSL_IS_DTLS(s) && BIO_dgram_is_sctp(SSL_get_wbio(s))) {
@@ -858,10 +863,24 @@ static SUB_STATE_RETURN write_state_machine(SSL *s)
                 SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
                 return SUB_STATE_ERROR;
             }
-            if (confunc != NULL && !confunc(s, &pkt)) {
-                WPACKET_cleanup(&pkt);
-                check_fatal(s);
-                return SUB_STATE_ERROR;
+            if (confunc != NULL) {
+                int tmpret;
+
+                tmpret = confunc(s, &pkt);
+                if (tmpret <= 0) {
+                    WPACKET_cleanup(&pkt);
+                    check_fatal(s);
+                    return SUB_STATE_ERROR;
+                } else if (tmpret == 2) {
+                    /*
+                     * The construction function decided not to construct the
+                     * message after all and continue. Skip sending.
+                     */
+                    WPACKET_cleanup(&pkt);
+                    st->write_state = WRITE_STATE_POST_WORK;
+                    st->write_state_work = WORK_MORE_A;
+                    break;
+                } /* else success */
             }
             if (!ssl_close_construct_packet(s, &pkt, mt)
                     || !WPACKET_finish(&pkt)) {

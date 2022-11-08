@@ -28,11 +28,468 @@ breaking changes, and mappings for the large list of deprecated functions.
 
 [Migration guide]: https://github.com/openssl/openssl/tree/master/doc/man7/migration_guide.pod
 
-### Changes between 3.0.0 and 3.0.0+quic [7 Sun 2021]
+### Changes between 3.0.7 and 3.0.7+quic [1 Nov 2022]
 
  * Add QUIC API support from BoringSSL.
 
    *Todd Short*
+
+### Changes between 3.0.6 and 3.0.7 [1 Nov 2022]
+
+ * Fixed two buffer overflows in punycode decoding functions.
+
+   A buffer overrun can be triggered in X.509 certificate verification,
+   specifically in name constraint checking. Note that this occurs after
+   certificate chain signature verification and requires either a CA to
+   have signed the malicious certificate or for the application to continue
+   certificate verification despite failure to construct a path to a trusted
+   issuer.
+
+   In a TLS client, this can be triggered by connecting to a malicious
+   server.  In a TLS server, this can be triggered if the server requests
+   client authentication and a malicious client connects.
+
+   An attacker can craft a malicious email address to overflow
+   an arbitrary number of bytes containing the `.`  character (decimal 46)
+   on the stack.  This buffer overflow could result in a crash (causing a
+   denial of service).
+   ([CVE-2022-3786])
+
+   An attacker can craft a malicious email address to overflow four
+   attacker-controlled bytes on the stack.  This buffer overflow could
+   result in a crash (causing a denial of service) or potentially remote code
+   execution depending on stack layout for any given platform/compiler.
+   ([CVE-2022-3602])
+
+   *Paul Dale*
+
+ * Removed all references to invalid OSSL_PKEY_PARAM_RSA names for CRT
+   parameters in OpenSSL code.
+   Applications should not use the names OSSL_PKEY_PARAM_RSA_FACTOR,
+   OSSL_PKEY_PARAM_RSA_EXPONENT and OSSL_PKEY_PARAM_RSA_COEFFICIENT.
+   Use the numbered names such as OSSL_PKEY_PARAM_RSA_FACTOR1 instead.
+   Using these invalid names may cause algorithms to use slower methods
+   that ignore the CRT parameters.
+
+   *Shane Lontis*
+
+ * Fixed a regression introduced in 3.0.6 version raising errors on some stack
+   operations.
+
+   *Tomáš Mráz*
+
+ * Fixed a regression introduced in 3.0.6 version not refreshing the certificate
+   data to be signed before signing the certificate.
+
+   *Gibeom Gwon*
+
+ * Added RIPEMD160 to the default provider.
+
+   *Paul Dale*
+
+ * Ensured that the key share group sent or accepted for the key exchange
+   is allowed for the protocol version.
+
+   *Matt Caswell*
+
+### Changes between 3.0.5 and 3.0.6 [11 Oct 2022]
+
+ * OpenSSL supports creating a custom cipher via the legacy
+   EVP_CIPHER_meth_new() function and associated function calls. This function
+   was deprecated in OpenSSL 3.0 and application authors are instead encouraged
+   to use the new provider mechanism in order to implement custom ciphers.
+
+   OpenSSL versions 3.0.0 to 3.0.5 incorrectly handle legacy custom ciphers
+   passed to the EVP_EncryptInit_ex2(), EVP_DecryptInit_ex2() and
+   EVP_CipherInit_ex2() functions (as well as other similarly named encryption
+   and decryption initialisation functions). Instead of using the custom cipher
+   directly it incorrectly tries to fetch an equivalent cipher from the
+   available providers. An equivalent cipher is found based on the NID passed to
+   EVP_CIPHER_meth_new(). This NID is supposed to represent the unique NID for a
+   given cipher. However it is possible for an application to incorrectly pass
+   NID_undef as this value in the call to EVP_CIPHER_meth_new(). When NID_undef
+   is used in this way the OpenSSL encryption/decryption initialisation function
+   will match the NULL cipher as being equivalent and will fetch this from the
+   available providers. This will succeed if the default provider has been
+   loaded (or if a third party provider has been loaded that offers this
+   cipher). Using the NULL cipher means that the plaintext is emitted as the
+   ciphertext.
+
+   Applications are only affected by this issue if they call
+   EVP_CIPHER_meth_new() using NID_undef and subsequently use it in a call to an
+   encryption/decryption initialisation function. Applications that only use
+   SSL/TLS are not impacted by this issue.
+   ([CVE-2022-3358])
+
+   *Matt Caswell*
+
+ * Fix LLVM vs Apple LLVM version numbering confusion that caused build failures
+   on MacOS 10.11
+
+   *Richard Levitte*
+
+ * Fixed the linux-mips64 Configure target which was missing the
+   SIXTY_FOUR_BIT bn_ops flag. This was causing heap corruption on that
+   platform.
+
+   *Adam Joseph*
+
+ * Fix handling of a ticket key callback that returns 0 in TLSv1.3 to not send a
+   ticket
+
+   *Matt Caswell*
+
+ * Correctly handle a retransmitted ClientHello in DTLS
+
+   *Matt Caswell*
+
+ * Fixed detection of ktls support in cross-compile environment on Linux
+
+   *Tomas Mraz*
+
+ * Fixed some regressions and test failures when running the 3.0.0 FIPS provider
+   against 3.0.x
+
+   *Paul Dale*
+
+ * Fixed SSL_pending() and SSL_has_pending() with DTLS which were failing to
+   report correct results in some cases
+
+   *Matt Caswell*
+
+ * Fix UWP builds by defining VirtualLock
+
+   *Charles Milette*
+
+ * For known safe primes use the minimum key length according to RFC 7919.
+   Longer private key sizes unnecessarily raise the cycles needed to compute the
+   shared secret without any increase of the real security. This fixes a
+   regression from 1.1.1 where these shorter keys were generated for the known
+   safe primes.
+
+   *Tomas Mraz*
+
+ * Added the loongarch64 target
+
+   *Shi Pujin*
+
+ * Fixed EC ASM flag passing. Flags for ASM implementations of EC curves were
+   only passed to the FIPS provider and not to the default or legacy provider.
+
+   *Juergen Christ*
+
+ * Fixed reported performance degradation on aarch64. Restored the
+   implementation prior to commit 2621751 ("aes/asm/aesv8-armx.pl: avoid
+   32-bit lane assignment in CTR mode") for 64bit targets only, since it is
+   reportedly 2-17% slower and the silicon errata only affects 32bit targets.
+   The new algorithm is still used for 32 bit targets.
+
+   *Bernd Edlinger*
+
+ * Added a missing header for memcmp that caused compilation failure on some
+   platforms
+
+   *Gregor Jasny*
+
+### Changes between 3.0.4 and 3.0.5 [5 Jul 2022]
+
+ * The OpenSSL 3.0.4 release introduced a serious bug in the RSA
+   implementation for X86_64 CPUs supporting the AVX512IFMA instructions.
+   This issue makes the RSA implementation with 2048 bit private keys
+   incorrect on such machines and memory corruption will happen during
+   the computation. As a consequence of the memory corruption an attacker
+   may be able to trigger a remote code execution on the machine performing
+   the computation.
+
+   SSL/TLS servers or other servers using 2048 bit RSA private keys running
+   on machines supporting AVX512IFMA instructions of the X86_64 architecture
+   are affected by this issue.
+   ([CVE-2022-2274])
+
+   *Xi Ruoyao*
+
+ * AES OCB mode for 32-bit x86 platforms using the AES-NI assembly optimised
+   implementation would not encrypt the entirety of the data under some
+   circumstances.  This could reveal sixteen bytes of data that was
+   preexisting in the memory that wasn't written.  In the special case of
+   "in place" encryption, sixteen bytes of the plaintext would be revealed.
+
+   Since OpenSSL does not support OCB based cipher suites for TLS and DTLS,
+   they are both unaffected.
+   ([CVE-2022-2097])
+
+   *Alex Chernyakhovsky, David Benjamin, Alejandro Sedeño*
+
+### Changes between 3.0.3 and 3.0.4 [21 Jun 2022]
+
+ * In addition to the c_rehash shell command injection identified in
+   CVE-2022-1292, further bugs where the c_rehash script does not
+   properly sanitise shell metacharacters to prevent command injection have been
+   fixed.
+
+   When the CVE-2022-1292 was fixed it was not discovered that there
+   are other places in the script where the file names of certificates
+   being hashed were possibly passed to a command executed through the shell.
+
+   This script is distributed by some operating systems in a manner where
+   it is automatically executed.  On such operating systems, an attacker
+   could execute arbitrary commands with the privileges of the script.
+
+   Use of the c_rehash script is considered obsolete and should be replaced
+   by the OpenSSL rehash command line tool.
+   (CVE-2022-2068)
+
+   *Daniel Fiala, Tomáš Mráz*
+
+ * Case insensitive string comparison no longer uses locales.  It has instead
+   been directly implemented.
+
+   *Paul Dale*
+
+### Changes between 3.0.2 and 3.0.3 [3 May 2022]
+
+ * Case insensitive string comparison is reimplemented via new locale-agnostic
+   comparison functions OPENSSL_str[n]casecmp always using the POSIX locale for
+   comparison. The previous implementation had problems when the Turkish locale
+   was used.
+
+   *Dmitry Belyavskiy*
+
+ * Fixed a bug in the c_rehash script which was not properly sanitising shell
+   metacharacters to prevent command injection.  This script is distributed by
+   some operating systems in a manner where it is automatically executed.  On
+   such operating systems, an attacker could execute arbitrary commands with the
+   privileges of the script.
+
+   Use of the c_rehash script is considered obsolete and should be replaced
+   by the OpenSSL rehash command line tool.
+   (CVE-2022-1292)
+
+   *Tomáš Mráz*
+
+ * Fixed a bug in the function `OCSP_basic_verify` that verifies the signer
+   certificate on an OCSP response. The bug caused the function in the case
+   where the (non-default) flag OCSP_NOCHECKS is used to return a postivie
+   response (meaning a successful verification) even in the case where the
+   response signing certificate fails to verify.
+
+   It is anticipated that most users of `OCSP_basic_verify` will not use the
+   OCSP_NOCHECKS flag. In this case the `OCSP_basic_verify` function will return
+   a negative value (indicating a fatal error) in the case of a certificate
+   verification failure. The normal expected return value in this case would be
+   0.
+
+   This issue also impacts the command line OpenSSL "ocsp" application. When
+   verifying an ocsp response with the "-no_cert_checks" option the command line
+   application will report that the verification is successful even though it
+   has in fact failed. In this case the incorrect successful response will also
+   be accompanied by error messages showing the failure and contradicting the
+   apparently successful result.
+   ([CVE-2022-1343])
+
+   *Matt Caswell*
+
+ * Fixed a bug where the RC4-MD5 ciphersuite incorrectly used the
+   AAD data as the MAC key. This made the MAC key trivially predictable.
+
+   An attacker could exploit this issue by performing a man-in-the-middle attack
+   to modify data being sent from one endpoint to an OpenSSL 3.0 recipient such
+   that the modified data would still pass the MAC integrity check.
+
+   Note that data sent from an OpenSSL 3.0 endpoint to a non-OpenSSL 3.0
+   endpoint will always be rejected by the recipient and the connection will
+   fail at that point. Many application protocols require data to be sent from
+   the client to the server first. Therefore, in such a case, only an OpenSSL
+   3.0 server would be impacted when talking to a non-OpenSSL 3.0 client.
+
+   If both endpoints are OpenSSL 3.0 then the attacker could modify data being
+   sent in both directions. In this case both clients and servers could be
+   affected, regardless of the application protocol.
+
+   Note that in the absence of an attacker this bug means that an OpenSSL 3.0
+   endpoint communicating with a non-OpenSSL 3.0 endpoint will fail to complete
+   the handshake when using this ciphersuite.
+
+   The confidentiality of data is not impacted by this issue, i.e. an attacker
+   cannot decrypt data that has been encrypted using this ciphersuite - they can
+   only modify it.
+
+   In order for this attack to work both endpoints must legitimately negotiate
+   the RC4-MD5 ciphersuite. This ciphersuite is not compiled by default in
+   OpenSSL 3.0, and is not available within the default provider or the default
+   ciphersuite list. This ciphersuite will never be used if TLSv1.3 has been
+   negotiated. In order for an OpenSSL 3.0 endpoint to use this ciphersuite the
+   following must have occurred:
+
+   1) OpenSSL must have been compiled with the (non-default) compile time option
+      enable-weak-ssl-ciphers
+
+   2) OpenSSL must have had the legacy provider explicitly loaded (either
+      through application code or via configuration)
+
+   3) The ciphersuite must have been explicitly added to the ciphersuite list
+
+   4) The libssl security level must have been set to 0 (default is 1)
+
+   5) A version of SSL/TLS below TLSv1.3 must have been negotiated
+
+   6) Both endpoints must negotiate the RC4-MD5 ciphersuite in preference to any
+      others that both endpoints have in common
+   (CVE-2022-1434)
+
+   *Matt Caswell*
+
+ * Fix a bug in the OPENSSL_LH_flush() function that breaks reuse of the memory
+   occuppied by the removed hash table entries.
+
+   This function is used when decoding certificates or keys. If a long lived
+   process periodically decodes certificates or keys its memory usage will
+   expand without bounds and the process might be terminated by the operating
+   system causing a denial of service. Also traversing the empty hash table
+   entries will take increasingly more time.
+
+   Typically such long lived processes might be TLS clients or TLS servers
+   configured to accept client certificate authentication.
+   (CVE-2022-1473)
+
+   *Hugo Landau, Aliaksei Levin*
+
+ * The functions `OPENSSL_LH_stats` and `OPENSSL_LH_stats_bio` now only report
+   the `num_items`, `num_nodes` and `num_alloc_nodes` statistics. All other
+   statistics are no longer supported. For compatibility, these statistics are
+   still listed in the output but are now always reported as zero.
+
+   *Hugo Landau*
+
+### Changes between 3.0.1 and 3.0.2 [15 Mar 2022]
+
+ * Fixed a bug in the BN_mod_sqrt() function that can cause it to loop forever
+   for non-prime moduli.
+
+   Internally this function is used when parsing certificates that contain
+   elliptic curve public keys in compressed form or explicit elliptic curve
+   parameters with a base point encoded in compressed form.
+
+   It is possible to trigger the infinite loop by crafting a certificate that
+   has invalid explicit curve parameters.
+
+   Since certificate parsing happens prior to verification of the certificate
+   signature, any process that parses an externally supplied certificate may thus
+   be subject to a denial of service attack. The infinite loop can also be
+   reached when parsing crafted private keys as they can contain explicit
+   elliptic curve parameters.
+
+   Thus vulnerable situations include:
+
+    - TLS clients consuming server certificates
+    - TLS servers consuming client certificates
+    - Hosting providers taking certificates or private keys from customers
+    - Certificate authorities parsing certification requests from subscribers
+    - Anything else which parses ASN.1 elliptic curve parameters
+
+   Also any other applications that use the BN_mod_sqrt() where the attacker
+   can control the parameter values are vulnerable to this DoS issue.
+   ([CVE-2022-0778])
+
+   *Tomáš Mráz*
+
+ * Add ciphersuites based on DHE_PSK (RFC 4279) and ECDHE_PSK (RFC 5489)
+   to the list of ciphersuites providing Perfect Forward Secrecy as
+   required by SECLEVEL >= 3.
+
+   *Dmitry Belyavskiy, Nicola Tuveri*
+
+ * Made the AES constant time code for no-asm configurations
+   optional due to the resulting 95% performance degradation.
+   The AES constant time code can be enabled, for no assembly
+   builds, with: ./config no-asm -DOPENSSL_AES_CONST_TIME
+
+   *Paul Dale*
+
+ * Fixed PEM_write_bio_PKCS8PrivateKey() to make it possible to use empty
+   passphrase strings.
+
+   *Darshan Sen*
+
+ * The negative return value handling of the certificate verification callback
+   was reverted. The replacement is to set the verification retry state with
+   the SSL_set_retry_verify() function.
+
+   *Tomáš Mráz*
+
+### Changes between 3.0.0 and 3.0.1 [14 Dec 2021]
+
+ * Fixed invalid handling of X509_verify_cert() internal errors in libssl
+   Internally libssl in OpenSSL calls X509_verify_cert() on the client side to
+   verify a certificate supplied by a server. That function may return a
+   negative return value to indicate an internal error (for example out of
+   memory). Such a negative return value is mishandled by OpenSSL and will cause
+   an IO function (such as SSL_connect() or SSL_do_handshake()) to not indicate
+   success and a subsequent call to SSL_get_error() to return the value
+   SSL_ERROR_WANT_RETRY_VERIFY. This return value is only supposed to be
+   returned by OpenSSL if the application has previously called
+   SSL_CTX_set_cert_verify_callback(). Since most applications do not do this
+   the SSL_ERROR_WANT_RETRY_VERIFY return value from SSL_get_error() will be
+   totally unexpected and applications may not behave correctly as a result. The
+   exact behaviour will depend on the application but it could result in
+   crashes, infinite loops or other similar incorrect responses.
+
+   This issue is made more serious in combination with a separate bug in OpenSSL
+   3.0 that will cause X509_verify_cert() to indicate an internal error when
+   processing a certificate chain. This will occur where a certificate does not
+   include the Subject Alternative Name extension but where a Certificate
+   Authority has enforced name constraints. This issue can occur even with valid
+   chains.
+   ([CVE-2021-4044])
+
+   *Matt Caswell*
+
+ * Corrected a few file name and file reference bugs in the build,
+   installation and setup scripts, which lead to installation verification
+   failures.  Slightly enhanced the installation verification script.
+
+   *Richard Levitte*
+
+ * Fixed EVP_PKEY_eq() to make it possible to use it with strictly private
+   keys.
+
+   *Richard Levitte*
+
+ * Fixed PVK encoder to properly query for the passphrase.
+
+   *Tomáš Mráz*
+
+ * Multiple fixes in the OSSL_HTTP API functions.
+
+   *David von Oheimb*
+
+ * Allow sign extension in OSSL_PARAM_allocate_from_text() for the
+   OSSL_PARAM_INTEGER data type and return error on negative numbers
+   used with the OSSL_PARAM_UNSIGNED_INTEGER data type. Make
+   OSSL_PARAM_BLD_push_BN{,_pad}() return an error on negative numbers.
+
+   *Richard Levitte*
+
+ * Allow copying uninitialized digest contexts with EVP_MD_CTX_copy_ex.
+
+   *Tomáš Mráz*
+
+ * Fixed detection of ARMv7 and ARM64 CPU features on FreeBSD.
+
+   *Allan Jude*
+
+ * Multiple threading fixes.
+
+   *Matt Caswell*
+
+ * Added NULL digest implementation to keep compatibility with 1.1.1 version.
+
+   *Tomáš Mráz*
+
+ * Allow fetching an operation from the provider that owns an unexportable key
+   as a fallback if that is still allowed by the property query.
+
+   *Richard Levitte*
 
 ### Changes between 1.1.1 and 3.0.0 [7 sep 2021]
 
@@ -1458,6 +1915,22 @@ breaking changes, and mappings for the large list of deprecated functions.
 
 OpenSSL 1.1.1
 -------------
+
+### Changes between 1.1.1l and 1.1.1m [xx XXX xxxx]
+
+ * Avoid loading of a dynamic engine twice.
+
+   *Bernd Edlinger*
+
+ * Prioritise DANE TLSA issuer certs over peer certs
+
+   *Viktor Dukhovni*
+
+ * Fixed random API for MacOS prior to 10.12
+
+   These MacOS versions don't support the CommonCrypto APIs
+
+   *Lenny Primak*
 
 ### Changes between 1.1.1k and 1.1.1l [24 Aug 2021]
 
@@ -18948,6 +19421,8 @@ ndif
 
 <!-- Links -->
 
+[CVE-2022-2274]: https://www.openssl.org/news/vulnerabilities.html#CVE-2022-2274
+[CVE-2022-2097]: https://www.openssl.org/news/vulnerabilities.html#CVE-2022-2274
 [CVE-2020-1971]: https://www.openssl.org/news/vulnerabilities.html#CVE-2020-1971
 [CVE-2020-1967]: https://www.openssl.org/news/vulnerabilities.html#CVE-2020-1967
 [CVE-2019-1563]: https://www.openssl.org/news/vulnerabilities.html#CVE-2019-1563

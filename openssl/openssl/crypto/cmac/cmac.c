@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2010-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -137,9 +137,9 @@ int CMAC_Init(CMAC_CTX *ctx, const void *key, size_t keylen,
 
         /* If anything fails then ensure we can't use this ctx */
         ctx->nlast_block = -1;
-        if (!EVP_CIPHER_CTX_get0_cipher(ctx->cctx))
+        if (EVP_CIPHER_CTX_get0_cipher(ctx->cctx) == NULL)
             return 0;
-        if (!EVP_CIPHER_CTX_set_key_length(ctx->cctx, keylen))
+        if (EVP_CIPHER_CTX_set_key_length(ctx->cctx, keylen) <= 0)
             return 0;
         if (!EVP_EncryptInit_ex(ctx->cctx, NULL, NULL, key, zero_iv))
             return 0;
@@ -227,7 +227,7 @@ int CMAC_Final(CMAC_CTX *ctx, unsigned char *out, size_t *poutlen)
         for (i = 0; i < bl; i++)
             out[i] = ctx->last_block[i] ^ ctx->k2[i];
     }
-    if (!EVP_Cipher(ctx->cctx, out, out, bl)) {
+    if (EVP_Cipher(ctx->cctx, out, out, bl) <= 0) {
         OPENSSL_cleanse(out, bl);
         return 0;
     }

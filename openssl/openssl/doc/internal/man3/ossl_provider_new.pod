@@ -8,7 +8,7 @@ ossl_provider_set_fallback, ossl_provider_set_module_path,
 ossl_provider_add_parameter, ossl_provider_set_child, ossl_provider_get_parent,
 ossl_provider_up_ref_parent, ossl_provider_free_parent,
 ossl_provider_default_props_update, ossl_provider_get0_dispatch,
-ossl_provider_init_as_child,
+ossl_provider_init_as_child, ossl_provider_deinit_child,
 ossl_provider_activate, ossl_provider_deactivate, ossl_provider_add_to_store,
 ossl_provider_ctx,
 ossl_provider_doall_activated,
@@ -16,7 +16,7 @@ ossl_provider_name, ossl_provider_dso,
 ossl_provider_module_name, ossl_provider_module_path,
 ossl_provider_libctx,
 ossl_provider_teardown, ossl_provider_gettable_params,
-ossl_provider_get_params, ossl_provider_clear_all_operation_bits,
+ossl_provider_get_params,
 ossl_provider_query_operation, ossl_provider_unquery_operation,
 ossl_provider_set_operation_bit, ossl_provider_test_operation_bit,
 ossl_provider_get_capabilities
@@ -54,7 +54,7 @@ ossl_provider_get_capabilities
   * If the Provider is a module, the module will be loaded
   */
  int ossl_provider_activate(OSSL_PROVIDER *prov, int upcalls, int aschild);
- int ossl_provider_deactivate(OSSL_PROVIDER *prov);
+ int ossl_provider_deactivate(OSSL_PROVIDER *prov, int removechildren);
  int ossl_provider_add_to_store(OSSL_PROVIDER *prov, OSSL_PROVIDER **actualprov,
                                 int retain_fallbacks);
 
@@ -94,12 +94,11 @@ ossl_provider_get_capabilities
  int ossl_provider_set_operation_bit(OSSL_PROVIDER *provider, size_t bitnum);
  int ossl_provider_test_operation_bit(OSSL_PROVIDER *provider, size_t bitnum,
                                       int *result);
- int ossl_provider_clear_all_operation_bits(OSSL_LIB_CTX *libctx);
 
  int ossl_provider_init_as_child(OSSL_LIB_CTX *ctx,
                                  const OSSL_CORE_HANDLE *handle,
                                  const OSSL_DISPATCH *in);
-
+ void ossl_provider_deinit_child(OSSL_LIB_CTX *ctx);
 
 =head1 DESCRIPTION
 
@@ -226,7 +225,9 @@ no action is taken and ossl_provider_activate() returns success.
 
 ossl_provider_deactivate() "deactivates" the provider for the given
 provider object I<prov> by decrementing its activation count.  When
-that count reaches zero, the activation flag is cleared.
+that count reaches zero, the activation flag is cleared. If the
+I<removechildren> parameter is 0 then no attempt is made to remove any
+associated child providers.
 
 ossl_provider_add_to_store() adds the provider I<prov> to the provider store and
 makes it available to other threads. This will prevent future automatic loading
@@ -296,15 +297,16 @@ in a bitstring that's internal to I<provider>.
 
 ossl_provider_test_operation_bit() checks if the bit operation I<bitnum>
 is set (1) or not (0) in the internal I<provider> bitstring, and sets
-I<*result> to 1 or 0 accorddingly. 
-
-ossl_provider_clear_all_operation_bits() clears all of the operation bits
-to (0) for all providers in the library context I<libctx>.
+I<*result> to 1 or 0 accorddingly.
 
 ossl_provider_init_as_child() stores in the library context I<ctx> references to
 the necessary upcalls for managing child providers. The I<handle> and I<in>
 parameters are the B<OSSL_CORE_HANDLE> and B<OSSL_DISPATCH> pointers that were
 passed to the provider's B<OSSL_provider_init> function.
+
+ossl_provider_deinit_child() deregisters callbacks from the parent library
+context about provider creation or removal events for the child library context
+I<ctx>. Must only be called if I<ctx> is a child library context.
 
 =head1 NOTES
 
@@ -374,8 +376,6 @@ If this function isn't available in the provider, 0 is returned.
 ossl_provider_set_operation_bit() and ossl_provider_test_operation_bit()
 return 1 on success, or 0 on error.
 
-ossl_provider_clear_all_operation_bits() returns 1 on success, or 0 on error.
-
 ossl_provider_get_capabilities() returns 1 on success, or 0 on error.
 If this function isn't available in the provider or the provider does not
 support the requested capability then 0 is returned.
@@ -390,7 +390,7 @@ The functions described here were all added in OpenSSL 3.0.
 
 =head1 COPYRIGHT
 
-Copyright 2019-2021 The OpenSSL Project Authors. All Rights Reserved.
+Copyright 2019-2022 The OpenSSL Project Authors. All Rights Reserved.
 
 Licensed under the Apache License 2.0 (the "License").  You may not use
 this file except in compliance with the License.  You can obtain a copy

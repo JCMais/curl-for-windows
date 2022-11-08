@@ -4,7 +4,11 @@
 .align	4
 _poly1305_init:
 L_poly1305_init_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -64,7 +68,11 @@ L000nokey:
 .align	4
 _poly1305_blocks:
 L_poly1305_blocks_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -231,7 +239,11 @@ L003nodata:
 .align	4
 _poly1305_emit:
 L_poly1305_emit_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -289,7 +301,11 @@ Lenter_emit:
 .align	5,0x90
 .align	4
 __poly1305_init_sse2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movdqu	24(%edi),%xmm4
 	leal	48(%edi),%edi
 	movl	%esp,%ebp
@@ -490,7 +506,11 @@ L006square_break:
 .align	5,0x90
 .align	4
 __poly1305_blocks_sse2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -1250,7 +1270,11 @@ L007nodata:
 .align	5,0x90
 .align	4
 __poly1305_emit_sse2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi
@@ -1342,7 +1366,11 @@ __poly1305_emit_sse2:
 .align	5,0x90
 .align	4
 __poly1305_init_avx2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	vmovdqu	24(%edi),%xmm4
 	leal	48(%edi),%edi
 	movl	%esp,%ebp
@@ -1512,7 +1540,11 @@ L019square_break:
 .align	5,0x90
 .align	4
 __poly1305_blocks_avx2:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	pushl	%ebp
 	pushl	%ebx
 	pushl	%esi

@@ -19,9 +19,9 @@ functions
  const BIGNUM *ECDSA_SIG_get0_s(const ECDSA_SIG *sig);
  int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
 
-Deprecated since OpenSSL 3.0, can be hidden entirely by defining
-B<OPENSSL_API_COMPAT> with a suitable version value, see
-L<openssl_user_macros(7)>:
+The following functions have been deprecated since OpenSSL 3.0, and can be
+hidden entirely by defining B<OPENSSL_API_COMPAT> with a suitable version value,
+see L<openssl_user_macros(7)>:
 
  int ECDSA_size(const EC_KEY *eckey);
 
@@ -46,7 +46,7 @@ L<openssl_user_macros(7)>:
 =head1 DESCRIPTION
 
 B<ECDSA_SIG> is an opaque structure consisting of two BIGNUMs for the
-I<r> and I<s> value of an ECDSA signature (see X9.62 or FIPS 186-2).
+I<r> and I<s> value of an ECDSA signature (see X9.62 or FIPS186-2).
 
 ECDSA_SIG_new() allocates an empty B<ECDSA_SIG> structure. Note: before
 OpenSSL 1.1.0 the: the I<r> and I<s> components were initialised.
@@ -191,7 +191,7 @@ and finally evaluate the return value:
 
 =head1 CONFORMING TO
 
-ANSI X9.62, US Federal Information Processing Standard FIPS 186-2
+ANSI X9.62, US Federal Information Processing Standard FIPS186-2
 (Digital Signature Standard, DSS)
 
 =head1 SEE ALSO
@@ -211,7 +211,7 @@ functions were deprecated in OpenSSL 3.0.
 
 =head1 COPYRIGHT
 
-Copyright 2004-2021 The OpenSSL Project Authors. All Rights Reserved.
+Copyright 2004-2022 The OpenSSL Project Authors. All Rights Reserved.
 
 Licensed under the Apache License 2.0 (the "License").  You may not use
 this file except in compliance with the License.  You can obtain a copy

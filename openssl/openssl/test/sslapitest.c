@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -94,6 +94,7 @@ static char *cert8192 = NULL;
 static char *privkey8192 = NULL;
 static char *srpvfile = NULL;
 static char *tmpfilename = NULL;
+static char *dhfile = NULL;
 
 static int is_fips = 0;
 
@@ -132,20 +133,6 @@ struct sslapitest_log_counts {
     unsigned int exporter_secret_count;
 };
 
-
-static unsigned char serverinfov1[] = {
-    0xff, 0xff, /* Dummy extension type */
-    0x00, 0x01, /* Extension length is 1 byte */
-    0xff        /* Dummy extension data */
-};
-
-static unsigned char serverinfov2[] = {
-    0x00, 0x00, 0x00,
-    (unsigned char)(SSL_EXT_CLIENT_HELLO & 0xff), /* Dummy context - 4 bytes */
-    0xff, 0xff, /* Dummy extension type */
-    0x00, 0x01, /* Extension length is 1 byte */
-    0xff        /* Dummy extension data */
-};
 
 static int hostname_cb(SSL *s, int *al, void *arg)
 {
@@ -557,10 +544,19 @@ end:
 static int verify_retry_cb(X509_STORE_CTX *ctx, void *arg)
 {
     int res = X509_verify_cert(ctx);
+    int idx = SSL_get_ex_data_X509_STORE_CTX_idx();
+    SSL *ssl;
+
+    /* this should not happen but check anyway */
+    if (idx < 0
+        || (ssl = X509_STORE_CTX_get_ex_data(ctx, idx)) == NULL)
+        return 0;
 
     if (res == 0 && X509_STORE_CTX_get_error(ctx) ==
         X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY)
-        return -1; /* indicate SSL_ERROR_WANT_RETRY_VERIFY */
+        /* indicate SSL_ERROR_WANT_RETRY_VERIFY */
+        return SSL_set_retry_verify(ssl);
+
     return res;
 }
 
@@ -672,15 +668,27 @@ end:
     return ret;
 }
 
+static int get_password_cb(char *buf, int size, int rw_flag, void *userdata)
+{
+    static const char pass[] = "testpass";
+
+    if (!TEST_int_eq(size, PEM_BUFSIZE))
+        return -1;
+
+    memcpy(buf, pass, sizeof(pass) - 1);
+    return sizeof(pass) - 1;
+}
+
 static int test_ssl_ctx_build_cert_chain(void)
 {
     int ret = 0;
     SSL_CTX *ctx = NULL;
-    char *skey = test_mk_file_path(certsdir, "leaf.key");
+    char *skey = test_mk_file_path(certsdir, "leaf-encrypted.key");
     char *leaf_chain = test_mk_file_path(certsdir, "leaf-chain.pem");
 
     if (!TEST_ptr(ctx = SSL_CTX_new_ex(libctx, NULL, TLS_server_method())))
         goto end;
+    SSL_CTX_set_default_passwd_cb(ctx, get_password_cb);
     /* leaf_chain contains leaf + subinterCA + interCA + rootCA */
     if (!TEST_int_eq(SSL_CTX_use_certificate_chain_file(ctx, leaf_chain), 1)
         || !TEST_int_eq(SSL_CTX_use_PrivateKey_file(ctx, skey,
@@ -1158,6 +1166,11 @@ static int execute_test_ktls(int cis_ktls, int sis_ktls,
         goto end;
     }
 
+    if (is_fips && strstr(cipher, "CHACHA") != NULL) {
+        testresult = TEST_skip("CHACHA is not supported in FIPS");
+        goto end;
+    }
+
     /* Create a session based on SHA-256 */
     if (!TEST_true(create_ssl_ctx_pair(libctx, TLS_server_method(),
                                        TLS_client_method(),
@@ -1292,6 +1305,11 @@ static int execute_test_ktls_sendfile(int tls_version, const char *cipher)
         goto end;
     }
 
+    if (is_fips && strstr(cipher, "CHACHA") != NULL) {
+        testresult = TEST_skip("CHACHA is not supported in FIPS");
+        goto end;
+    }
+
     /* Create a session based on SHA-256 */
     if (!TEST_true(create_ssl_ctx_pair(libctx, TLS_server_method(),
                                        TLS_client_method(),
@@ -1327,7 +1345,7 @@ static int execute_test_ktls_sendfile(int tls_version, const char *cipher)
         goto end;
     }
 
-    if (!TEST_true(RAND_bytes_ex(libctx, buf, SENDFILE_SZ, 0)))
+    if (!TEST_int_gt(RAND_bytes_ex(libctx, buf, SENDFILE_SZ, 0), 0))
         goto end;
 
     out = BIO_new_file(tmpfilename, "wb");
@@ -2099,6 +2117,32 @@ static int execute_test_session(int maxprot, int use_int_cache,
                 goto end;
         }
     }
+    /*
+     * Make a small cache, force out all other sessions but
+     * sess2, try to add sess1, which should succeed. Then
+     * make sure it's there by checking the owners. Despite
+     * the timeouts, sess1 should have kicked out sess2
+     */
+
+    /* Make sess1 expire before sess2 */
+    if (!TEST_long_gt(SSL_SESSION_set_time(sess1, 1000), 0)
+            || !TEST_long_gt(SSL_SESSION_set_timeout(sess1, 1000), 0)
+            || !TEST_long_gt(SSL_SESSION_set_time(sess2, 2000), 0)
+            || !TEST_long_gt(SSL_SESSION_set_timeout(sess2, 2000), 0))
+        goto end;
+
+    if (!TEST_long_ne(SSL_CTX_sess_set_cache_size(sctx, 1), 0))
+        goto end;
+
+    /* Don't care about results - cache should only be sess2 at end */
+    SSL_CTX_add_session(sctx, sess1);
+    SSL_CTX_add_session(sctx, sess2);
+
+    /* Now add sess1, and make sure it remains, despite timeout */
+    if (!TEST_true(SSL_CTX_add_session(sctx, sess1))
+            || !TEST_ptr(sess1->owner)
+            || !TEST_ptr_null(sess2->owner))
+        goto end;
 
     testresult = 1;
 
@@ -5534,6 +5578,11 @@ static int sni_cb(SSL *s, int *al, void *arg)
     return SSL_TLSEXT_ERR_OK;
 }
 
+static int verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
+{
+    return 1;
+}
+
 /*
  * Custom call back tests.
  * Test 0: Old style callbacks in TLSv1.2
@@ -5541,6 +5590,7 @@ static int sni_cb(SSL *s, int *al, void *arg)
  * Test 2: New style callbacks in TLSv1.2 with SNI
  * Test 3: New style callbacks in TLSv1.3. Extensions in CH and EE
  * Test 4: New style callbacks in TLSv1.3. Extensions in CH, SH, EE, Cert + NST
+ * Test 5: New style callbacks in TLSv1.3. Extensions in CR + Client Cert
  */
 static int test_custom_exts(int tst)
 {
@@ -5582,7 +5632,19 @@ static int test_custom_exts(int tst)
             SSL_CTX_set_options(sctx2, SSL_OP_NO_TLSv1_3);
     }
 
-    if (tst == 4) {
+    if (tst == 5) {
+        context = SSL_EXT_TLS1_3_CERTIFICATE_REQUEST
+                  | SSL_EXT_TLS1_3_CERTIFICATE;
+        SSL_CTX_set_verify(sctx,
+                           SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                           verify_cb);
+        if (!TEST_int_eq(SSL_CTX_use_certificate_file(cctx, cert,
+                                                      SSL_FILETYPE_PEM), 1)
+                || !TEST_int_eq(SSL_CTX_use_PrivateKey_file(cctx, privkey,
+                                                            SSL_FILETYPE_PEM), 1)
+                || !TEST_int_eq(SSL_CTX_check_private_key(cctx), 1))
+            goto end;
+    } else if (tst == 4) {
         context = SSL_EXT_CLIENT_HELLO
                   | SSL_EXT_TLS1_2_SERVER_HELLO
                   | SSL_EXT_TLS1_3_SERVER_HELLO
@@ -5678,6 +5740,12 @@ static int test_custom_exts(int tst)
                 || (tst != 2 && snicb != 0)
                 || (tst == 2 && snicb != 1))
             goto end;
+    } else if (tst == 5) {
+        if (clntaddnewcb != 1
+                || clntparsenewcb != 1
+                || srvaddnewcb != 1
+                || srvparsenewcb != 1)
+            goto end;
     } else {
         /* In this case there 2 NewSessionTicket messages created */
         if (clntaddnewcb != 1
@@ -5694,8 +5762,8 @@ static int test_custom_exts(int tst)
     SSL_free(clientssl);
     serverssl = clientssl = NULL;
 
-    if (tst == 3) {
-        /* We don't bother with the resumption aspects for this test */
+    if (tst == 3 || tst == 5) {
+        /* We don't bother with the resumption aspects for these tests */
         testresult = 1;
         goto end;
     }
@@ -5749,62 +5817,138 @@ end:
     return testresult;
 }
 
-/*
- * Test loading of serverinfo data in various formats. test_sslmessages actually
- * tests to make sure the extensions appear in the handshake
- */
-static int test_serverinfo(int tst)
-{
-    unsigned int version;
-    unsigned char *sibuf;
-    size_t sibuflen;
-    int ret, expected, testresult = 0;
-    SSL_CTX *ctx;
+#if !defined(OPENSSL_NO_TLS1_2) && !defined(OSSL_NO_USABLE_TLS1_3)
 
-    ctx = SSL_CTX_new_ex(libctx, NULL, TLS_method());
-    if (!TEST_ptr(ctx))
+#define  SYNTHV1CONTEXT     (SSL_EXT_TLS1_2_AND_BELOW_ONLY \
+                             | SSL_EXT_CLIENT_HELLO \
+                             | SSL_EXT_TLS1_2_SERVER_HELLO \
+                             | SSL_EXT_IGNORE_ON_RESUMPTION)
+
+#define TLS13CONTEXT (SSL_EXT_TLS1_3_CERTIFICATE \
+                      | SSL_EXT_TLS1_2_SERVER_HELLO \
+                      | SSL_EXT_CLIENT_HELLO)
+
+#define SERVERINFO_CUSTOM                                 \
+    0x00, (char)TLSEXT_TYPE_signed_certificate_timestamp, \
+    0x00, 0x03,                                           \
+    0x04, 0x05, 0x06                                      \
+
+static const unsigned char serverinfo_custom_tls13[] = {
+    0x00, 0x00, (TLS13CONTEXT >> 8) & 0xff, TLS13CONTEXT & 0xff,
+    SERVERINFO_CUSTOM
+};
+static const unsigned char serverinfo_custom_v2[] = {
+    0x00, 0x00, (SYNTHV1CONTEXT >> 8) & 0xff,  SYNTHV1CONTEXT & 0xff,
+    SERVERINFO_CUSTOM
+};
+static const unsigned char serverinfo_custom_v1[] = {
+    SERVERINFO_CUSTOM
+};
+static const size_t serverinfo_custom_tls13_len = sizeof(serverinfo_custom_tls13);
+static const size_t serverinfo_custom_v2_len = sizeof(serverinfo_custom_v2);
+static const size_t serverinfo_custom_v1_len = sizeof(serverinfo_custom_v1);
+
+static int serverinfo_custom_parse_cb(SSL *s, unsigned int ext_type,
+                                      unsigned int context,
+                                      const unsigned char *in,
+                                      size_t inlen, X509 *x,
+                                      size_t chainidx, int *al,
+                                      void *parse_arg)
+{
+    const size_t len = serverinfo_custom_v1_len;
+    const unsigned char *si = &serverinfo_custom_v1[len - 3];
+    int *p_cb_result = (int*)parse_arg;
+    *p_cb_result = TEST_mem_eq(in, inlen, si, 3);
+    return 1;
+}
+
+static int test_serverinfo_custom(const int idx)
+{
+    SSL_CTX *sctx = NULL, *cctx = NULL;
+    SSL *clientssl = NULL, *serverssl = NULL;
+    int testresult = 0;
+    int cb_result = 0;
+
+    /*
+     * Following variables are set in the switch statement
+     *  according to the test iteration.
+     * Default values do not make much sense: test would fail with them.
+     */
+    int serverinfo_version = 0;
+    int protocol_version = 0;
+    unsigned int extension_context = 0;
+    const unsigned char *si = NULL;
+    size_t si_len = 0;
+
+    const int call_use_serverinfo_ex = idx > 0;
+    switch (idx) {
+    case 0: /* FALLTHROUGH */
+    case 1:
+        serverinfo_version = SSL_SERVERINFOV1;
+        protocol_version = TLS1_2_VERSION;
+        extension_context = SYNTHV1CONTEXT;
+        si = serverinfo_custom_v1;
+        si_len = serverinfo_custom_v1_len;
+        break;
+    case 2:
+        serverinfo_version = SSL_SERVERINFOV2;
+        protocol_version = TLS1_2_VERSION;
+        extension_context = SYNTHV1CONTEXT;
+        si = serverinfo_custom_v2;
+        si_len = serverinfo_custom_v2_len;
+        break;
+    case 3:
+        serverinfo_version = SSL_SERVERINFOV2;
+        protocol_version = TLS1_3_VERSION;
+        extension_context = TLS13CONTEXT;
+        si = serverinfo_custom_tls13;
+        si_len = serverinfo_custom_tls13_len;
+        break;
+    }
+
+    if (!TEST_true(create_ssl_ctx_pair(libctx,
+                                       TLS_method(),
+                                       TLS_method(),
+                                       protocol_version,
+                                       protocol_version,
+                                       &sctx, &cctx, cert, privkey)))
         goto end;
 
-    if ((tst & 0x01) == 0x01)
-        version = SSL_SERVERINFOV2;
-    else
-        version = SSL_SERVERINFOV1;
-
-    if ((tst & 0x02) == 0x02) {
-        sibuf = serverinfov2;
-        sibuflen = sizeof(serverinfov2);
-        expected = (version == SSL_SERVERINFOV2);
+    if (call_use_serverinfo_ex) {
+        if (!TEST_true(SSL_CTX_use_serverinfo_ex(sctx, serverinfo_version,
+                                                 si, si_len)))
+            goto end;
     } else {
-        sibuf = serverinfov1;
-        sibuflen = sizeof(serverinfov1);
-        expected = (version == SSL_SERVERINFOV1);
+        if (!TEST_true(SSL_CTX_use_serverinfo(sctx, si, si_len)))
+            goto end;
     }
 
-    if ((tst & 0x04) == 0x04) {
-        ret = SSL_CTX_use_serverinfo_ex(ctx, version, sibuf, sibuflen);
-    } else {
-        ret = SSL_CTX_use_serverinfo(ctx, sibuf, sibuflen);
+    if (!TEST_true(SSL_CTX_add_custom_ext(cctx, TLSEXT_TYPE_signed_certificate_timestamp,
+                                          extension_context,
+                                          NULL, NULL, NULL,
+                                          serverinfo_custom_parse_cb,
+                                          &cb_result))
+        || !TEST_true(create_ssl_objects(sctx, cctx, &serverssl, &clientssl,
+                                         NULL, NULL))
+        || !TEST_true(create_ssl_connection(serverssl, clientssl,
+                                            SSL_ERROR_NONE))
+        || !TEST_int_eq(SSL_do_handshake(clientssl), 1))
+        goto end;
 
-        /*
-         * The version variable is irrelevant in this case - it's what is in the
-         * buffer that matters
-         */
-        if ((tst & 0x02) == 0x02)
-            expected = 0;
-        else
-            expected = 1;
-    }
-
-    if (!TEST_true(ret == expected))
+    if (!TEST_true(cb_result))
         goto end;
 
     testresult = 1;
 
  end:
-    SSL_CTX_free(ctx);
+    SSL_free(serverssl);
+    SSL_free(clientssl);
+    SSL_CTX_free(sctx);
+    SSL_CTX_free(cctx);
 
     return testresult;
 }
+#endif
 
 /*
  * Test that SSL_export_keying_material() produces expected results. There are
@@ -6752,7 +6896,7 @@ static int create_new_vfile(char *userid, char *password, const char *filename)
 
     row = NULL;
 
-    if (!TXT_DB_write(out, db))
+    if (TXT_DB_write(out, db) <= 0)
         goto end;
 
     ret = 1;
@@ -7466,11 +7610,24 @@ static int tick_key_cb(SSL *s, unsigned char key_name[16],
 {
     const unsigned char tick_aes_key[16] = "0123456789abcdef";
     const unsigned char tick_hmac_key[16] = "0123456789abcdef";
-    EVP_CIPHER *aes128cbc = EVP_CIPHER_fetch(libctx, "AES-128-CBC", NULL);
-    EVP_MD *sha256 = EVP_MD_fetch(libctx, "SHA-256", NULL);
+    EVP_CIPHER *aes128cbc;
+    EVP_MD *sha256;
     int ret;
 
     tick_key_cb_called = 1;
+
+    if (tick_key_renew == -1)
+        return 0;
+
+    aes128cbc = EVP_CIPHER_fetch(libctx, "AES-128-CBC", NULL);
+    if (!TEST_ptr(aes128cbc))
+        return 0;
+    sha256 = EVP_MD_fetch(libctx, "SHA-256", NULL);
+    if (!TEST_ptr(sha256)) {
+        EVP_CIPHER_free(aes128cbc);
+        return 0;
+    }
+
     memset(iv, 0, AES_BLOCK_SIZE);
     memset(key_name, 0, 16);
     if (aes128cbc == NULL
@@ -7496,10 +7653,18 @@ static int tick_key_evp_cb(SSL *s, unsigned char key_name[16],
     const unsigned char tick_aes_key[16] = "0123456789abcdef";
     unsigned char tick_hmac_key[16] = "0123456789abcdef";
     OSSL_PARAM params[2];
-    EVP_CIPHER *aes128cbc = EVP_CIPHER_fetch(libctx, "AES-128-CBC", NULL);
+    EVP_CIPHER *aes128cbc;
     int ret;
 
     tick_key_cb_called = 1;
+
+    if (tick_key_renew == -1)
+        return 0;
+
+    aes128cbc = EVP_CIPHER_fetch(libctx, "AES-128-CBC", NULL);
+    if (!TEST_ptr(aes128cbc))
+        return 0;
+
     memset(iv, 0, AES_BLOCK_SIZE);
     memset(key_name, 0, 16);
     params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_DIGEST,
@@ -7532,10 +7697,14 @@ static int tick_key_evp_cb(SSL *s, unsigned char key_name[16],
  * Test 9: TLSv1.3, old ticket key callback, ticket, no renewal
  * Test 10: TLSv1.2, old ticket key callback, ticket, renewal
  * Test 11: TLSv1.3, old ticket key callback, ticket, renewal
- * Test 12: TLSv1.2, ticket key callback, ticket, no renewal
- * Test 13: TLSv1.3, ticket key callback, ticket, no renewal
- * Test 14: TLSv1.2, ticket key callback, ticket, renewal
- * Test 15: TLSv1.3, ticket key callback, ticket, renewal
+ * Test 12: TLSv1.2, old ticket key callback, no ticket
+ * Test 13: TLSv1.3, old ticket key callback, no ticket
+ * Test 14: TLSv1.2, ticket key callback, ticket, no renewal
+ * Test 15: TLSv1.3, ticket key callback, ticket, no renewal
+ * Test 16: TLSv1.2, ticket key callback, ticket, renewal
+ * Test 17: TLSv1.3, ticket key callback, ticket, renewal
+ * Test 18: TLSv1.2, ticket key callback, no ticket
+ * Test 19: TLSv1.3, ticket key callback, no ticket
  */
 static int test_ticket_callbacks(int tst)
 {
@@ -7553,15 +7722,18 @@ static int test_ticket_callbacks(int tst)
         return 1;
 #endif
 #ifdef OPENSSL_NO_DEPRECATED_3_0
-    if (tst >= 8 && tst <= 11)
+    if (tst >= 8 && tst <= 13)
         return 1;
 #endif
 
     gen_tick_called = dec_tick_called = tick_key_cb_called = 0;
 
     /* Which tests the ticket key callback should request renewal for */
-    if (tst == 10 || tst == 11 || tst == 14 || tst == 15)
+    
+    if (tst == 10 || tst == 11 || tst == 16 || tst == 17)
         tick_key_renew = 1;
+    else if (tst == 12 || tst == 13 || tst == 18 || tst == 19)
+        tick_key_renew = -1; /* abort sending the ticket/0-length ticket */
     else
         tick_key_renew = 0;
 
@@ -7610,7 +7782,7 @@ static int test_ticket_callbacks(int tst)
                                                  NULL)))
         goto end;
 
-    if (tst >= 12) {
+    if (tst >= 14) {
         if (!TEST_true(SSL_CTX_set_tlsext_ticket_key_evp_cb(sctx, tick_key_evp_cb)))
             goto end;
 #ifndef OPENSSL_NO_DEPRECATED_3_0
@@ -7655,7 +7827,8 @@ static int test_ticket_callbacks(int tst)
         goto end;
 
     if (tick_dec_ret == SSL_TICKET_RETURN_IGNORE
-            || tick_dec_ret == SSL_TICKET_RETURN_IGNORE_RENEW) {
+            || tick_dec_ret == SSL_TICKET_RETURN_IGNORE_RENEW
+            || tick_key_renew == -1) {
         if (!TEST_false(SSL_session_reused(clientssl)))
             goto end;
     } else {
@@ -7668,7 +7841,8 @@ static int test_ticket_callbacks(int tst)
                       || tick_dec_ret == SSL_TICKET_RETURN_IGNORE_RENEW
                       || tick_dec_ret == SSL_TICKET_RETURN_USE_RENEW)
                      ? 1 : 0)
-            || !TEST_int_eq(dec_tick_called, 1))
+               /* There is no ticket to decrypt in tests 13 and 19 */
+            || !TEST_int_eq(dec_tick_called, (tst == 13 || tst == 19) ? 0 : 1))
         goto end;
 
     testresult = 1;
@@ -7944,7 +8118,7 @@ static int cert_cb(SSL *s, void *arg)
         if (!TEST_ptr(chain))
             goto out;
         if (!TEST_ptr(in = BIO_new(BIO_s_file()))
-                || !TEST_int_ge(BIO_read_filename(in, rootfile), 0)
+                || !TEST_int_gt(BIO_read_filename(in, rootfile), 0)
                 || !TEST_ptr(rootx = X509_new_ex(libctx, NULL))
                 || !TEST_ptr(PEM_read_bio_X509(in, &rootx, NULL, NULL))
                 || !TEST_true(sk_X509_push(chain, rootx)))
@@ -7952,13 +8126,13 @@ static int cert_cb(SSL *s, void *arg)
         rootx = NULL;
         BIO_free(in);
         if (!TEST_ptr(in = BIO_new(BIO_s_file()))
-                || !TEST_int_ge(BIO_read_filename(in, ecdsacert), 0)
+                || !TEST_int_gt(BIO_read_filename(in, ecdsacert), 0)
                 || !TEST_ptr(x509 = X509_new_ex(libctx, NULL))
                 || !TEST_ptr(PEM_read_bio_X509(in, &x509, NULL, NULL)))
             goto out;
         BIO_free(in);
         if (!TEST_ptr(in = BIO_new(BIO_s_file()))
-                || !TEST_int_ge(BIO_read_filename(in, ecdsakey), 0)
+                || !TEST_int_gt(BIO_read_filename(in, ecdsakey), 0)
                 || !TEST_ptr(pkey = PEM_read_bio_PrivateKey_ex(in, NULL,
                                                                NULL, NULL,
                                                                libctx, NULL)))
@@ -8028,8 +8202,12 @@ static int test_cert_cb_int(int prot, int tst)
     else
         cert_cb_cnt = 0;
 
-    if (tst == 2)
-        snictx = SSL_CTX_new(TLS_server_method());
+    if (tst == 2) {
+        snictx = SSL_CTX_new_ex(libctx, NULL, TLS_server_method());
+        if (!TEST_ptr(snictx))
+            goto end;
+    }
+
     SSL_CTX_set_cert_cb(sctx, cert_cb, snictx);
 
     if (!TEST_true(create_ssl_objects(sctx, cctx, &serverssl, &clientssl,
@@ -8122,11 +8300,6 @@ err:
     BIO_free(in);
     BIO_free(priv_in);
     return 0;
-}
-
-static int verify_cb(int preverify_ok, X509_STORE_CTX *x509_ctx)
-{
-    return 1;
 }
 
 static int test_client_cert_cb(int tst)
@@ -8356,7 +8529,7 @@ static int test_multiblock_write(int test_index)
      * Check if the cipher exists before attempting to use it since it only has
      * a hardware specific implementation.
      */
-    ciph = EVP_CIPHER_fetch(NULL, fetchable_ciphers[test_index], "");
+    ciph = EVP_CIPHER_fetch(libctx, fetchable_ciphers[test_index], "");
     if (ciph == NULL) {
         TEST_skip("Multiblock cipher is not available for %s", cipherlist);
         return 1;
@@ -8985,7 +9158,7 @@ static EVP_PKEY *get_tmp_dh_params(void)
 
         pctx = EVP_PKEY_CTX_new_from_name(libctx, "DH", NULL);
         if (!TEST_ptr(pctx)
-                || !TEST_true(EVP_PKEY_fromdata_init(pctx)))
+                || !TEST_int_eq(EVP_PKEY_fromdata_init(pctx), 1))
             goto end;
 
         tmpl = OSSL_PARAM_BLD_new();
@@ -9000,8 +9173,9 @@ static EVP_PKEY *get_tmp_dh_params(void)
 
         params = OSSL_PARAM_BLD_to_param(tmpl);
         if (!TEST_ptr(params)
-                || !TEST_true(EVP_PKEY_fromdata(pctx, &dhpkey,
-                                                EVP_PKEY_KEY_PARAMETERS, params)))
+                || !TEST_int_eq(EVP_PKEY_fromdata(pctx, &dhpkey,
+                                                  EVP_PKEY_KEY_PARAMETERS,
+                                                  params), 1))
             goto end;
 
         tmp_dh_params = dhpkey;
@@ -9329,6 +9503,68 @@ end:
     SSL_CTX_free(cctx);
     return testresult;
 }
+
+/*
+ * Test that the lifetime hint of a TLSv1.3 ticket is no more than 1 week
+ * 0 = TLSv1.2
+ * 1 = TLSv1.3
+ */
+static int test_ticket_lifetime(int idx)
+{
+    SSL_CTX *cctx = NULL, *sctx = NULL;
+    SSL *clientssl = NULL, *serverssl = NULL;
+    int testresult = 0;
+    int version = TLS1_3_VERSION;
+
+#define ONE_WEEK_SEC (7 * 24 * 60 * 60)
+#define TWO_WEEK_SEC (2 * ONE_WEEK_SEC)
+
+    if (idx == 0) {
+#ifdef OPENSSL_NO_TLS1_2
+        return TEST_skip("TLS 1.2 is disabled.");
+#else
+        version = TLS1_2_VERSION;
+#endif
+    }
+
+    if (!TEST_true(create_ssl_ctx_pair(libctx, TLS_server_method(),
+                                       TLS_client_method(), version, version,
+                                       &sctx, &cctx, cert, privkey)))
+        goto end;
+
+    if (!TEST_true(create_ssl_objects(sctx, cctx, &serverssl,
+                                      &clientssl, NULL, NULL)))
+        goto end;
+
+    /*
+     * Set the timeout to be more than 1 week
+     * make sure the returned value is the default
+     */
+    if (!TEST_long_eq(SSL_CTX_set_timeout(sctx, TWO_WEEK_SEC),
+                      SSL_get_default_timeout(serverssl)))
+        goto end;
+
+    if (!TEST_true(create_ssl_connection(serverssl, clientssl, SSL_ERROR_NONE)))
+        goto end;
+
+    if (idx == 0) {
+        /* TLSv1.2 uses the set value */
+        if (!TEST_ulong_eq(SSL_SESSION_get_ticket_lifetime_hint(SSL_get_session(clientssl)), TWO_WEEK_SEC))
+            goto end;
+    } else {
+        /* TLSv1.3 uses the limited value */
+        if (!TEST_ulong_le(SSL_SESSION_get_ticket_lifetime_hint(SSL_get_session(clientssl)), ONE_WEEK_SEC))
+            goto end;
+    }
+    testresult = 1;
+
+end:
+    SSL_free(serverssl);
+    SSL_free(clientssl);
+    SSL_CTX_free(sctx);
+    SSL_CTX_free(cctx);
+    return testresult;
+}
 #endif
 /*
  * Test that setting an ALPN does not violate RFC
@@ -9402,6 +9638,172 @@ end:
     return testresult;
 }
 
+/*
+ * Test SSL_CTX_set1_verify/chain_cert_store and SSL_CTX_get_verify/chain_cert_store.
+ */
+static int test_set_verify_cert_store_ssl_ctx(void)
+{
+   SSL_CTX *ctx = NULL;
+   int testresult = 0;
+   X509_STORE *store = NULL, *new_store = NULL,
+              *cstore = NULL, *new_cstore = NULL;
+
+   /* Create an initial SSL_CTX. */
+   ctx = SSL_CTX_new_ex(libctx, NULL, TLS_server_method());
+   if (!TEST_ptr(ctx))
+       goto end;
+
+   /* Retrieve verify store pointer. */
+   if (!TEST_true(SSL_CTX_get0_verify_cert_store(ctx, &store)))
+       goto end;
+
+   /* Retrieve chain store pointer. */
+   if (!TEST_true(SSL_CTX_get0_chain_cert_store(ctx, &cstore)))
+       goto end;
+
+   /* We haven't set any yet, so this should be NULL. */
+   if (!TEST_ptr_null(store) || !TEST_ptr_null(cstore))
+       goto end;
+
+   /* Create stores. We use separate stores so pointers are different. */
+   new_store = X509_STORE_new();
+   if (!TEST_ptr(new_store))
+       goto end;
+
+   new_cstore = X509_STORE_new();
+   if (!TEST_ptr(new_cstore))
+       goto end;
+
+   /* Set stores. */
+   if (!TEST_true(SSL_CTX_set1_verify_cert_store(ctx, new_store)))
+       goto end;
+
+   if (!TEST_true(SSL_CTX_set1_chain_cert_store(ctx, new_cstore)))
+       goto end;
+
+   /* Should be able to retrieve the same pointer. */
+   if (!TEST_true(SSL_CTX_get0_verify_cert_store(ctx, &store)))
+       goto end;
+
+   if (!TEST_true(SSL_CTX_get0_chain_cert_store(ctx, &cstore)))
+       goto end;
+
+   if (!TEST_ptr_eq(store, new_store) || !TEST_ptr_eq(cstore, new_cstore))
+       goto end;
+
+   /* Should be able to unset again. */
+   if (!TEST_true(SSL_CTX_set1_verify_cert_store(ctx, NULL)))
+       goto end;
+
+   if (!TEST_true(SSL_CTX_set1_chain_cert_store(ctx, NULL)))
+       goto end;
+
+   /* Should now be NULL. */
+   if (!TEST_true(SSL_CTX_get0_verify_cert_store(ctx, &store)))
+       goto end;
+
+   if (!TEST_true(SSL_CTX_get0_chain_cert_store(ctx, &cstore)))
+       goto end;
+
+   if (!TEST_ptr_null(store) || !TEST_ptr_null(cstore))
+       goto end;
+
+   testresult = 1;
+
+end:
+   X509_STORE_free(new_store);
+   X509_STORE_free(new_cstore);
+   SSL_CTX_free(ctx);
+   return testresult;
+}
+
+/*
+ * Test SSL_set1_verify/chain_cert_store and SSL_get_verify/chain_cert_store.
+ */
+static int test_set_verify_cert_store_ssl(void)
+{
+   SSL_CTX *ctx = NULL;
+   SSL *ssl = NULL;
+   int testresult = 0;
+   X509_STORE *store = NULL, *new_store = NULL,
+              *cstore = NULL, *new_cstore = NULL;
+
+   /* Create an initial SSL_CTX. */
+   ctx = SSL_CTX_new_ex(libctx, NULL, TLS_server_method());
+   if (!TEST_ptr(ctx))
+       goto end;
+
+   /* Create an SSL object. */
+   ssl = SSL_new(ctx);
+   if (!TEST_ptr(ssl))
+       goto end;
+
+   /* Retrieve verify store pointer. */
+   if (!TEST_true(SSL_get0_verify_cert_store(ssl, &store)))
+       goto end;
+
+   /* Retrieve chain store pointer. */
+   if (!TEST_true(SSL_get0_chain_cert_store(ssl, &cstore)))
+       goto end;
+
+   /* We haven't set any yet, so this should be NULL. */
+   if (!TEST_ptr_null(store) || !TEST_ptr_null(cstore))
+       goto end;
+
+   /* Create stores. We use separate stores so pointers are different. */
+   new_store = X509_STORE_new();
+   if (!TEST_ptr(new_store))
+       goto end;
+
+   new_cstore = X509_STORE_new();
+   if (!TEST_ptr(new_cstore))
+       goto end;
+
+   /* Set stores. */
+   if (!TEST_true(SSL_set1_verify_cert_store(ssl, new_store)))
+       goto end;
+
+   if (!TEST_true(SSL_set1_chain_cert_store(ssl, new_cstore)))
+       goto end;
+
+   /* Should be able to retrieve the same pointer. */
+   if (!TEST_true(SSL_get0_verify_cert_store(ssl, &store)))
+       goto end;
+
+   if (!TEST_true(SSL_get0_chain_cert_store(ssl, &cstore)))
+       goto end;
+
+   if (!TEST_ptr_eq(store, new_store) || !TEST_ptr_eq(cstore, new_cstore))
+       goto end;
+
+   /* Should be able to unset again. */
+   if (!TEST_true(SSL_set1_verify_cert_store(ssl, NULL)))
+       goto end;
+
+   if (!TEST_true(SSL_set1_chain_cert_store(ssl, NULL)))
+       goto end;
+
+   /* Should now be NULL. */
+   if (!TEST_true(SSL_get0_verify_cert_store(ssl, &store)))
+       goto end;
+
+   if (!TEST_true(SSL_get0_chain_cert_store(ssl, &cstore)))
+       goto end;
+
+   if (!TEST_ptr_null(store) || !TEST_ptr_null(cstore))
+       goto end;
+
+   testresult = 1;
+
+end:
+   X509_STORE_free(new_store);
+   X509_STORE_free(new_cstore);
+   SSL_free(ssl);
+   SSL_CTX_free(ctx);
+   return testresult;
+}
+
+
 static int test_inherit_verify_param(void)
 {
     int testresult = 0;
@@ -9441,6 +9843,42 @@ static int test_inherit_verify_param(void)
     SSL_CTX_free(ctx);
 
     return testresult;
+}
+
+
+static int test_load_dhfile(void)
+{
+#ifndef OPENSSL_NO_DH
+    int testresult = 0;
+
+    SSL_CTX *ctx = NULL;
+    SSL_CONF_CTX *cctx = NULL;
+
+    if (dhfile == NULL)
+        return 1;
+
+    if (!TEST_ptr(ctx = SSL_CTX_new_ex(libctx, NULL, TLS_client_method()))
+        || !TEST_ptr(cctx = SSL_CONF_CTX_new()))
+        goto end;
+
+    SSL_CONF_CTX_set_ssl_ctx(cctx, ctx);
+    SSL_CONF_CTX_set_flags(cctx,
+                           SSL_CONF_FLAG_CERTIFICATE
+                           | SSL_CONF_FLAG_SERVER
+                           | SSL_CONF_FLAG_FILE);
+
+    if (!TEST_int_eq(SSL_CONF_cmd(cctx, "DHParameters", dhfile), 2))
+        goto end;
+
+    testresult = 1;
+end:
+    SSL_CONF_CTX_free(cctx);
+    SSL_CTX_free(ctx);
+
+    return testresult;
+#else
+    return TEST_skip("DH not supported by this build");
+#endif
 }
 
 #ifndef OPENSSL_NO_QUIC
@@ -9532,8 +9970,8 @@ static int test_quic_api_version(int clnt, int srvr)
             || !TEST_true(SSL_set_app_data(clientssl, serverssl))
             || !TEST_true(test_quic_api_set_versions(clientssl, clnt))
             || !TEST_true(test_quic_api_set_versions(serverssl, srvr))
-            || !TEST_true(create_ssl_connection(serverssl, clientssl,
-                                                SSL_ERROR_NONE))
+            || !TEST_true(create_bare_ssl_connection(serverssl, clientssl,
+                                                     SSL_ERROR_NONE, 0))
             || !TEST_true(SSL_version(serverssl) == TLS1_3_VERSION)
             || !TEST_true(SSL_version(clientssl) == TLS1_3_VERSION)
             || !(TEST_int_eq(SSL_quic_read_level(clientssl), ssl_encryption_application))
@@ -9737,8 +10175,8 @@ static int quic_setupearly_data_test(SSL_CTX **cctx, SSL_CTX **sctx,
     if (sess == NULL)
         return 1;
 
-    if (!TEST_true(create_ssl_connection(*serverssl, *clientssl,
-                                         SSL_ERROR_NONE)))
+    if (!TEST_true(create_bare_ssl_connection(*serverssl, *clientssl,
+                                              SSL_ERROR_NONE, 0)))
         return 0;
 
     /* Deal with two NewSessionTickets */
@@ -9782,7 +10220,7 @@ static int test_quic_early_data(int tst)
                                              &serverssl, &sess, tst)))
         goto end;
 
-    if (!TEST_true(create_ssl_connection(serverssl, clientssl, SSL_ERROR_NONE))
+    if (!TEST_true(create_bare_ssl_connection(serverssl, clientssl, SSL_ERROR_NONE, 0))
             || !TEST_true(SSL_get_early_data_status(serverssl)))
         goto end;
 
@@ -9802,7 +10240,7 @@ static int test_quic_early_data(int tst)
 # endif /* OSSL_NO_USABLE_TLS1_3 */
 #endif /* OPENSSL_NO_QUIC */
 
-OPT_TEST_DECLARE_USAGE("certfile privkeyfile srpvfile tmpfile provider config\n")
+OPT_TEST_DECLARE_USAGE("certfile privkeyfile srpvfile tmpfile provider config dhfile\n")
 
 int setup_tests(void)
 {
@@ -9832,7 +10270,8 @@ int setup_tests(void)
             || !TEST_ptr(srpvfile = test_get_argument(1))
             || !TEST_ptr(tmpfilename = test_get_argument(2))
             || !TEST_ptr(modulename = test_get_argument(3))
-            || !TEST_ptr(configfile = test_get_argument(4)))
+            || !TEST_ptr(configfile = test_get_argument(4))
+            || !TEST_ptr(dhfile = test_get_argument(5)))
         return 0;
 
     if (!TEST_true(OSSL_LIB_CTX_load_config(libctx, configfile)))
@@ -10008,13 +10447,12 @@ int setup_tests(void)
     /* Test with only TLSv1.3 versions */
     ADD_ALL_TESTS(test_key_exchange, 12);
 # endif
-    ADD_ALL_TESTS(test_custom_exts, 5);
+    ADD_ALL_TESTS(test_custom_exts, 6);
     ADD_TEST(test_stateless);
     ADD_TEST(test_pha_key_update);
 #else
     ADD_ALL_TESTS(test_custom_exts, 3);
 #endif
-    ADD_ALL_TESTS(test_serverinfo, 8);
     ADD_ALL_TESTS(test_export_key_mat, 6);
 #ifndef OSSL_NO_USABLE_TLS1_3
     ADD_ALL_TESTS(test_export_key_mat_early, 3);
@@ -10032,7 +10470,7 @@ int setup_tests(void)
     ADD_ALL_TESTS(test_info_callback, 6);
     ADD_ALL_TESTS(test_ssl_pending, 2);
     ADD_ALL_TESTS(test_ssl_get_shared_ciphers, OSSL_NELEM(shared_ciphers_data));
-    ADD_ALL_TESTS(test_ticket_callbacks, 16);
+    ADD_ALL_TESTS(test_ticket_callbacks, 20);
     ADD_ALL_TESTS(test_shutdown, 7);
     ADD_ALL_TESTS(test_incorrect_shutdown, 2);
     ADD_ALL_TESTS(test_cert_cb, 6);
@@ -10058,10 +10496,17 @@ int setup_tests(void)
 #endif
 #ifndef OSSL_NO_USABLE_TLS1_3
     ADD_TEST(test_sni_tls13);
+    ADD_ALL_TESTS(test_ticket_lifetime, 2);
 #endif
     ADD_TEST(test_inherit_verify_param);
     ADD_TEST(test_set_alpn);
+    ADD_TEST(test_set_verify_cert_store_ssl_ctx);
+    ADD_TEST(test_set_verify_cert_store_ssl);
     ADD_ALL_TESTS(test_session_timeout, 1);
+    ADD_TEST(test_load_dhfile);
+#if !defined(OPENSSL_NO_TLS1_2) && !defined(OSSL_NO_USABLE_TLS1_3)
+    ADD_ALL_TESTS(test_serverinfo_custom, 4);
+#endif
 #ifndef OPENSSL_NO_QUIC
     ADD_ALL_TESTS(test_quic_api, 9);
 # ifndef OSSL_NO_USABLE_TLS1_3

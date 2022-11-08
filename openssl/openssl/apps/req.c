@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -103,7 +103,7 @@ const OPTIONS req_options[] = {
     {"keygen_engine", OPT_KEYGEN_ENGINE, 's',
      "Specify engine to be used for key generation operations"},
 #endif
-    {"in", OPT_IN, '<', "X.509 request input file"},
+    {"in", OPT_IN, '<', "X.509 request input file (default stdin)"},
     {"inform", OPT_INFORM, 'F', "Input format - DER or PEM"},
     {"verify", OPT_VERIFY, '-', "Verify self-signature on the request"},
 
@@ -136,10 +136,11 @@ const OPTIONS req_options[] = {
      "Cert extension section (override value in config file)"},
     {"reqexts", OPT_REQEXTS, 's',
      "Request extension section (override value in config file)"},
-    {"precert", OPT_PRECERT, '-', "Add a poison extension (implies -new)"},
+    {"precert", OPT_PRECERT, '-',
+     "Add a poison extension to the generated cert (implies -new)"},
 
     OPT_SECTION("Keys and Signing"),
-    {"key", OPT_KEY, 's', "Key to include and to use for self-signature"},
+    {"key", OPT_KEY, 's', "Key for signing, and to include unless -in given"},
     {"keyform", OPT_KEYFORM, 'f', "Key file format (ENGINE, other values ignored)"},
     {"pubkey", OPT_PUBKEY, '-', "Output public key"},
     {"keyout", OPT_KEYOUT, '>', "File to write private key to"},
@@ -742,7 +743,8 @@ int req_main(int argc, char **argv)
         goto end;
 
     if (!newreq) {
-        req = load_csr(infile, informat, "X509 request");
+        req = load_csr(infile /* if NULL, reads from stdin */,
+                       informat, "X509 request");
         if (req == NULL)
             goto end;
     }
@@ -752,7 +754,7 @@ int req_main(int argc, char **argv)
     if (CAkeyfile != NULL) {
         if (CAfile == NULL) {
             BIO_printf(bio_err,
-                       "Ignoring -CAkey option since no -CA option is given\n");
+                       "Warning: Ignoring -CAkey option since no -CA option is given\n");
         } else {
             if ((CAkey = load_key(CAkeyfile, FORMAT_UNDEF,
                                   0, passin, e,
@@ -773,8 +775,9 @@ int req_main(int argc, char **argv)
         }
     }
     if (newreq || gen_x509) {
-        if (pkey == NULL /* can happen only if !newreq */) {
-            BIO_printf(bio_err, "Must provide a signature key using -key\n");
+        if (CAcert == NULL && pkey == NULL) {
+            BIO_printf(bio_err, "Must provide a signature key using -key or"
+                " provide -CA / -CAkey\n");
             goto end;
         }
 
@@ -788,6 +791,7 @@ int req_main(int argc, char **argv)
                 BIO_printf(bio_err, "Error making certificate request\n");
                 goto end;
             }
+            /* Note that -x509 can take over -key and -subj option values. */
         }
         if (gen_x509) {
             EVP_PKEY *pub_key = X509_REQ_get0_pubkey(req);
@@ -988,7 +992,7 @@ int req_main(int argc, char **argv)
             goto end;
         }
         fprintf(stdout, "Modulus=");
-        if (EVP_PKEY_is_a(tpubkey, "RSA")) {
+        if (EVP_PKEY_is_a(tpubkey, "RSA") || EVP_PKEY_is_a(tpubkey, "RSA-PSS")) {
             BIGNUM *n = NULL;
 
             if (!EVP_PKEY_get_bn_param(tpubkey, "n", &n))
@@ -1591,6 +1595,13 @@ static EVP_PKEY_CTX *set_keygen_ctx(const char *gstr,
         *pkeytype = OPENSSL_strndup(keytype, keytypelen);
     else
         *pkeytype = OPENSSL_strdup(keytype);
+
+    if (*pkeytype == NULL) {
+        BIO_printf(bio_err, "Out of memory\n");
+        EVP_PKEY_free(param);
+        return NULL;
+    }
+
     if (keylen >= 0)
         *pkeylen = keylen;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 1995-2021 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 1995-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -43,6 +43,7 @@ int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx)
     if (ctx->fetched_cipher != NULL)
         EVP_CIPHER_free(ctx->fetched_cipher);
     memset(ctx, 0, sizeof(*ctx));
+    ctx->iv_len = -1;
 
     return 1;
 
@@ -61,6 +62,7 @@ int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx)
     ENGINE_finish(ctx->engine);
 #endif
     memset(ctx, 0, sizeof(*ctx));
+    ctx->iv_len = -1;
     return 1;
 }
 
@@ -87,6 +89,9 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
 #if !defined(OPENSSL_NO_ENGINE) && !defined(FIPS_MODULE)
     ENGINE *tmpimpl = NULL;
 #endif
+
+    ctx->iv_len = -1;
+
     /*
      * enc == 1 means we are encrypting.
      * enc == 0 means we are decrypting.
@@ -131,7 +136,10 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
 #if !defined(OPENSSL_NO_ENGINE) && !defined(FIPS_MODULE)
             || tmpimpl != NULL
 #endif
-            || impl != NULL) {
+            || impl != NULL
+            || (cipher != NULL && cipher->origin == EVP_ORIG_METH)
+            || (cipher == NULL && ctx->cipher != NULL
+                               && ctx->cipher->origin == EVP_ORIG_METH)) {
         if (ctx->cipher == ctx->fetched_cipher)
             ctx->cipher = NULL;
         EVP_CIPHER_free(ctx->fetched_cipher);
@@ -143,10 +151,11 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
      * (legacy code)
      */
     if (cipher != NULL && ctx->cipher != NULL) {
+        if (ctx->cipher->cleanup != NULL && !ctx->cipher->cleanup(ctx))
+            return 0;
         OPENSSL_clear_free(ctx->cipher_data, ctx->cipher->ctx_size);
         ctx->cipher_data = NULL;
     }
-
 
     /* Start of non-legacy code below */
 
@@ -304,7 +313,7 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
         /* Preserve wrap enable flag, zero everything else */
         ctx->flags &= EVP_CIPHER_CTX_FLAG_WRAP_ALLOW;
         if (ctx->cipher->flags & EVP_CIPH_CTRL_INIT) {
-            if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_INIT, 0, NULL)) {
+            if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_INIT, 0, NULL) <= 0) {
                 ctx->cipher = NULL;
                 ERR_raise(ERR_LIB_EVP, EVP_R_INITIALIZATION_ERROR);
                 return 0;
@@ -344,8 +353,10 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
 
         case EVP_CIPH_CBC_MODE:
             n = EVP_CIPHER_CTX_get_iv_length(ctx);
-            if (!ossl_assert(n >= 0 && n <= (int)sizeof(ctx->iv)))
-                    return 0;
+            if (n < 0 || n > (int)sizeof(ctx->iv)) {
+                ERR_raise(ERR_LIB_EVP, EVP_R_INVALID_IV_LENGTH);
+                return 0;
+            }
             if (iv != NULL)
                 memcpy(ctx->oiv, iv, n);
             memcpy(ctx->iv, ctx->oiv, n);
@@ -355,8 +366,11 @@ static int evp_cipher_init_internal(EVP_CIPHER_CTX *ctx,
             ctx->num = 0;
             /* Don't reuse IV for CTR mode */
             if (iv != NULL) {
-                if ((n = EVP_CIPHER_CTX_get_iv_length(ctx)) <= 0)
+                n = EVP_CIPHER_CTX_get_iv_length(ctx);
+                if (n <= 0 || n > (int)sizeof(ctx->iv)) {
+                    ERR_raise(ERR_LIB_EVP, EVP_R_INVALID_IV_LENGTH);
                     return 0;
+                }
                 memcpy(ctx->iv, iv, n);
             }
             break;
@@ -595,7 +609,7 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
                       const unsigned char *in, int inl)
 {
     int ret;
-    size_t soutl;
+    size_t soutl, inl_ = (size_t)inl;
     int blocksize;
 
     if (outl != NULL) {
@@ -625,9 +639,10 @@ int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
         ERR_raise(ERR_LIB_EVP, EVP_R_UPDATE_ERROR);
         return 0;
     }
+
     ret = ctx->cipher->cupdate(ctx->algctx, out, &soutl,
-                               inl + (blocksize == 1 ? 0 : blocksize), in,
-                               (size_t)inl);
+                               inl_ + (size_t)(blocksize == 1 ? 0 : blocksize),
+                               in, inl_);
 
     if (ret) {
         if (soutl > INT_MAX) {
@@ -743,7 +758,7 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
 {
     int fix_len, cmpl = inl, ret;
     unsigned int b;
-    size_t soutl;
+    size_t soutl, inl_ = (size_t)inl;
     int blocksize;
 
     if (outl != NULL) {
@@ -773,8 +788,8 @@ int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
         return 0;
     }
     ret = ctx->cipher->cupdate(ctx->algctx, out, &soutl,
-                               inl + (blocksize == 1 ? 0 : blocksize), in,
-                               (size_t)inl);
+                               inl_ + (size_t)(blocksize == 1 ? 0 : blocksize),
+                               in, inl_);
 
     if (ret) {
         if (soutl > INT_MAX) {
@@ -1079,12 +1094,14 @@ int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         if (arg < 0)
             return 0;
         params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN, &sz);
+        ctx->iv_len = -1;
         break;
     case EVP_CTRL_CCM_SET_L:
         if (arg < 2 || arg > 8)
             return 0;
         sz = 15 - arg;
         params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN, &sz);
+        ctx->iv_len = -1;
         break;
     case EVP_CTRL_AEAD_SET_IV_FIXED:
         params[0] = OSSL_PARAM_construct_octet_string(
@@ -1248,8 +1265,10 @@ int EVP_CIPHER_get_params(EVP_CIPHER *cipher, OSSL_PARAM params[])
 
 int EVP_CIPHER_CTX_set_params(EVP_CIPHER_CTX *ctx, const OSSL_PARAM params[])
 {
-    if (ctx->cipher != NULL && ctx->cipher->set_ctx_params != NULL)
+    if (ctx->cipher != NULL && ctx->cipher->set_ctx_params != NULL) {
+        ctx->iv_len = -1;
         return ctx->cipher->set_ctx_params(ctx->algctx, params);
+    }
     return 0;
 }
 

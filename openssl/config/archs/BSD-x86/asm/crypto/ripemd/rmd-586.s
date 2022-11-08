@@ -4,7 +4,11 @@
 .align	4
 _ripemd160_block_asm_data_order:
 L_ripemd160_block_asm_data_order_begin:
+	%ifdef __CET__
+
 .byte	243,15,30,251
+	%endif
+
 	movl	4(%esp),%edx
 	movl	8(%esp),%eax
 	pushl	%esi

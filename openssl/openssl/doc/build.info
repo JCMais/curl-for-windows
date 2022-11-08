@@ -1307,10 +1307,10 @@ DEPEND[html/man3/EVP_RAND.html]=man3/EVP_RAND.pod
 GENERATE[html/man3/EVP_RAND.html]=man3/EVP_RAND.pod
 DEPEND[man/man3/EVP_RAND.3]=man3/EVP_RAND.pod
 GENERATE[man/man3/EVP_RAND.3]=man3/EVP_RAND.pod
-DEPEND[html/man3/EVP_SIGNATURE_free.html]=man3/EVP_SIGNATURE_free.pod
-GENERATE[html/man3/EVP_SIGNATURE_free.html]=man3/EVP_SIGNATURE_free.pod
-DEPEND[man/man3/EVP_SIGNATURE_free.3]=man3/EVP_SIGNATURE_free.pod
-GENERATE[man/man3/EVP_SIGNATURE_free.3]=man3/EVP_SIGNATURE_free.pod
+DEPEND[html/man3/EVP_SIGNATURE.html]=man3/EVP_SIGNATURE.pod
+GENERATE[html/man3/EVP_SIGNATURE.html]=man3/EVP_SIGNATURE.pod
+DEPEND[man/man3/EVP_SIGNATURE.3]=man3/EVP_SIGNATURE.pod
+GENERATE[man/man3/EVP_SIGNATURE.3]=man3/EVP_SIGNATURE.pod
 DEPEND[html/man3/EVP_SealInit.html]=man3/EVP_SealInit.pod
 GENERATE[html/man3/EVP_SealInit.html]=man3/EVP_SealInit.pod
 DEPEND[man/man3/EVP_SealInit.3]=man3/EVP_SealInit.pod
@@ -1495,6 +1495,10 @@ DEPEND[html/man3/OPENSSL_fork_prepare.html]=man3/OPENSSL_fork_prepare.pod
 GENERATE[html/man3/OPENSSL_fork_prepare.html]=man3/OPENSSL_fork_prepare.pod
 DEPEND[man/man3/OPENSSL_fork_prepare.3]=man3/OPENSSL_fork_prepare.pod
 GENERATE[man/man3/OPENSSL_fork_prepare.3]=man3/OPENSSL_fork_prepare.pod
+DEPEND[html/man3/OPENSSL_gmtime.html]=man3/OPENSSL_gmtime.pod
+GENERATE[html/man3/OPENSSL_gmtime.html]=man3/OPENSSL_gmtime.pod
+DEPEND[man/man3/OPENSSL_gmtime.3]=man3/OPENSSL_gmtime.pod
+GENERATE[man/man3/OPENSSL_gmtime.3]=man3/OPENSSL_gmtime.pod
 DEPEND[html/man3/OPENSSL_hexchar2int.html]=man3/OPENSSL_hexchar2int.pod
 GENERATE[html/man3/OPENSSL_hexchar2int.html]=man3/OPENSSL_hexchar2int.pod
 DEPEND[man/man3/OPENSSL_hexchar2int.3]=man3/OPENSSL_hexchar2int.pod
@@ -1531,6 +1535,10 @@ DEPEND[html/man3/OPENSSL_secure_malloc.html]=man3/OPENSSL_secure_malloc.pod
 GENERATE[html/man3/OPENSSL_secure_malloc.html]=man3/OPENSSL_secure_malloc.pod
 DEPEND[man/man3/OPENSSL_secure_malloc.3]=man3/OPENSSL_secure_malloc.pod
 GENERATE[man/man3/OPENSSL_secure_malloc.3]=man3/OPENSSL_secure_malloc.pod
+DEPEND[html/man3/OPENSSL_strcasecmp.html]=man3/OPENSSL_strcasecmp.pod
+GENERATE[html/man3/OPENSSL_strcasecmp.html]=man3/OPENSSL_strcasecmp.pod
+DEPEND[man/man3/OPENSSL_strcasecmp.3]=man3/OPENSSL_strcasecmp.pod
+GENERATE[man/man3/OPENSSL_strcasecmp.3]=man3/OPENSSL_strcasecmp.pod
 DEPEND[html/man3/OSSL_CMP_CTX_new.html]=man3/OSSL_CMP_CTX_new.pod
 GENERATE[html/man3/OSSL_CMP_CTX_new.html]=man3/OSSL_CMP_CTX_new.pod
 DEPEND[man/man3/OSSL_CMP_CTX_new.3]=man3/OSSL_CMP_CTX_new.pod
@@ -2419,6 +2427,10 @@ DEPEND[html/man3/SSL_get_all_async_fds.html]=man3/SSL_get_all_async_fds.pod
 GENERATE[html/man3/SSL_get_all_async_fds.html]=man3/SSL_get_all_async_fds.pod
 DEPEND[man/man3/SSL_get_all_async_fds.3]=man3/SSL_get_all_async_fds.pod
 GENERATE[man/man3/SSL_get_all_async_fds.3]=man3/SSL_get_all_async_fds.pod
+DEPEND[html/man3/SSL_get_certificate.html]=man3/SSL_get_certificate.pod
+GENERATE[html/man3/SSL_get_certificate.html]=man3/SSL_get_certificate.pod
+DEPEND[man/man3/SSL_get_certificate.3]=man3/SSL_get_certificate.pod
+GENERATE[man/man3/SSL_get_certificate.3]=man3/SSL_get_certificate.pod
 DEPEND[html/man3/SSL_get_ciphers.html]=man3/SSL_get_ciphers.pod
 GENERATE[html/man3/SSL_get_ciphers.html]=man3/SSL_get_ciphers.pod
 DEPEND[man/man3/SSL_get_ciphers.3]=man3/SSL_get_ciphers.pod
@@ -2551,6 +2563,10 @@ DEPEND[html/man3/SSL_set_fd.html]=man3/SSL_set_fd.pod
 GENERATE[html/man3/SSL_set_fd.html]=man3/SSL_set_fd.pod
 DEPEND[man/man3/SSL_set_fd.3]=man3/SSL_set_fd.pod
 GENERATE[man/man3/SSL_set_fd.3]=man3/SSL_set_fd.pod
+DEPEND[html/man3/SSL_set_retry_verify.html]=man3/SSL_set_retry_verify.pod
+GENERATE[html/man3/SSL_set_retry_verify.html]=man3/SSL_set_retry_verify.pod
+DEPEND[man/man3/SSL_set_retry_verify.3]=man3/SSL_set_retry_verify.pod
+GENERATE[man/man3/SSL_set_retry_verify.3]=man3/SSL_set_retry_verify.pod
 DEPEND[html/man3/SSL_set_session.html]=man3/SSL_set_session.pod
 GENERATE[html/man3/SSL_set_session.html]=man3/SSL_set_session.pod
 DEPEND[man/man3/SSL_set_session.3]=man3/SSL_set_session.pod
@@ -3050,7 +3066,7 @@ html/man3/EVP_PKEY_todata.html \
 html/man3/EVP_PKEY_verify.html \
 html/man3/EVP_PKEY_verify_recover.html \
 html/man3/EVP_RAND.html \
-html/man3/EVP_SIGNATURE_free.html \
+html/man3/EVP_SIGNATURE.html \
 html/man3/EVP_SealInit.html \
 html/man3/EVP_SignInit.html \
 html/man3/EVP_VerifyInit.html \
@@ -3097,6 +3113,7 @@ html/man3/OPENSSL_LH_COMPFUNC.html \
 html/man3/OPENSSL_LH_stats.html \
 html/man3/OPENSSL_config.html \
 html/man3/OPENSSL_fork_prepare.html \
+html/man3/OPENSSL_gmtime.html \
 html/man3/OPENSSL_hexchar2int.html \
 html/man3/OPENSSL_ia32cap.html \
 html/man3/OPENSSL_init_crypto.html \
@@ -3106,6 +3123,7 @@ html/man3/OPENSSL_load_builtin_modules.html \
 html/man3/OPENSSL_malloc.html \
 html/man3/OPENSSL_s390xcap.html \
 html/man3/OPENSSL_secure_malloc.html \
+html/man3/OPENSSL_strcasecmp.html \
 html/man3/OSSL_CMP_CTX_new.html \
 html/man3/OSSL_CMP_HDR_get0_transactionID.html \
 html/man3/OSSL_CMP_ITAV_set0.html \
@@ -3328,6 +3346,7 @@ html/man3/SSL_free.html \
 html/man3/SSL_get0_peer_scts.html \
 html/man3/SSL_get_SSL_CTX.html \
 html/man3/SSL_get_all_async_fds.html \
+html/man3/SSL_get_certificate.html \
 html/man3/SSL_get_ciphers.html \
 html/man3/SSL_get_client_random.html \
 html/man3/SSL_get_current_cipher.html \
@@ -3361,6 +3380,7 @@ html/man3/SSL_set_async_callback.html \
 html/man3/SSL_set_bio.html \
 html/man3/SSL_set_connect_state.html \
 html/man3/SSL_set_fd.html \
+html/man3/SSL_set_retry_verify.html \
 html/man3/SSL_set_session.html \
 html/man3/SSL_set_shutdown.html \
 html/man3/SSL_set_verify_result.html \
@@ -3643,7 +3663,7 @@ man/man3/EVP_PKEY_todata.3 \
 man/man3/EVP_PKEY_verify.3 \
 man/man3/EVP_PKEY_verify_recover.3 \
 man/man3/EVP_RAND.3 \
-man/man3/EVP_SIGNATURE_free.3 \
+man/man3/EVP_SIGNATURE.3 \
 man/man3/EVP_SealInit.3 \
 man/man3/EVP_SignInit.3 \
 man/man3/EVP_VerifyInit.3 \
@@ -3690,6 +3710,7 @@ man/man3/OPENSSL_LH_COMPFUNC.3 \
 man/man3/OPENSSL_LH_stats.3 \
 man/man3/OPENSSL_config.3 \
 man/man3/OPENSSL_fork_prepare.3 \
+man/man3/OPENSSL_gmtime.3 \
 man/man3/OPENSSL_hexchar2int.3 \
 man/man3/OPENSSL_ia32cap.3 \
 man/man3/OPENSSL_init_crypto.3 \
@@ -3699,6 +3720,7 @@ man/man3/OPENSSL_load_builtin_modules.3 \
 man/man3/OPENSSL_malloc.3 \
 man/man3/OPENSSL_s390xcap.3 \
 man/man3/OPENSSL_secure_malloc.3 \
+man/man3/OPENSSL_strcasecmp.3 \
 man/man3/OSSL_CMP_CTX_new.3 \
 man/man3/OSSL_CMP_HDR_get0_transactionID.3 \
 man/man3/OSSL_CMP_ITAV_set0.3 \
@@ -3921,6 +3943,7 @@ man/man3/SSL_free.3 \
 man/man3/SSL_get0_peer_scts.3 \
 man/man3/SSL_get_SSL_CTX.3 \
 man/man3/SSL_get_all_async_fds.3 \
+man/man3/SSL_get_certificate.3 \
 man/man3/SSL_get_ciphers.3 \
 man/man3/SSL_get_client_random.3 \
 man/man3/SSL_get_current_cipher.3 \
@@ -3954,6 +3977,7 @@ man/man3/SSL_set_async_callback.3 \
 man/man3/SSL_set_bio.3 \
 man/man3/SSL_set_connect_state.3 \
 man/man3/SSL_set_fd.3 \
+man/man3/SSL_set_retry_verify.3 \
 man/man3/SSL_set_session.3 \
 man/man3/SSL_set_shutdown.3 \
 man/man3/SSL_set_verify_result.3 \
