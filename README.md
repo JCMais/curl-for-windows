@@ -1,4 +1,4 @@
-> **NOTE**: There is not much value on maintaining this anymore, given [vcpkg](https://github.com/microsoft/vcpkg) offers a much better (and sane) way of building libcurl and its dependencies in a specific way. This repository is now archived, and it is not used on [`node-libcurl`](https://github.com/JCMais/node-libcurl) anymore.
+# **NOTE**: There is not much value on maintaining this anymore, given [vcpkg](https://github.com/microsoft/vcpkg) offers a much better (and sane) way of building libcurl and its dependencies in a specific way. This repository is now archived, and it is not used on [`node-libcurl`](https://github.com/JCMais/node-libcurl) anymore.
 
 # Curl for windows
 
